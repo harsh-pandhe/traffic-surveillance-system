@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Weights / models (regenerable; kept out of git)
+weights/*.pt
+weights/*.pth
+weights/*.onnx
+weights/*.joblib
+!weights/.gitkeep
+
+# Data + outputs
+data/raw/*
+data/processed/*
+data/unified/
+outputs/
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

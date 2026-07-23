@@ -1,0 +1,37 @@
+# ==========================================================================
+# Adaptive Spatio-Temporal Traffic Surveillance - Python dependencies
+# Target: Python 3.10+, CPU-optimized execution
+# ==========================================================================
+
+# --- Core numerics / IO ---
+numpy>=1.24,<2.0
+opencv-python>=4.8.0
+PyYAML>=6.0
+scipy>=1.10
+
+# --- Deep learning (CPU builds are fine) ---
+torch>=2.1.0
+torchvision>=0.16.0
+
+# --- Detection / classification ---
+ultralytics>=8.1.0            # YOLOv8 / YOLOv11 detect + cls
+# rtmdet is provided through mmdetection; optional, guarded at import time
+# mmdet>=3.2.0
+
+# --- Tracking / Re-Identification ---
+deep-sort-realtime>=1.3.2     # DeepSORT with embedder support
+torchreid>=0.2.5              # OSNet ReID backbones (optional, guarded)
+
+# --- Augmentation ---
+albumentations>=1.3.1
+
+# --- Demographics (age / gender) ---
+deepface>=0.0.89              # wraps FairFace / Age / Gender models (optional)
+
+# --- Optimization / export ---
+onnx>=1.15.0
+onnxruntime>=1.17.0
+
+# --- Metrics / system telemetry ---
+psutil>=5.9.0
+tabulate>=0.9.0

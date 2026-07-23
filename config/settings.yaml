@@ -1,0 +1,148 @@
+# ==========================================================================
+# Central configuration for the Traffic Surveillance pipeline.
+# All modules read from this single source of truth.
+# ==========================================================================
+
+paths:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  models_dir: "weights"                 # place downloaded / trained weights here
+  output_dir: "outputs"                 # annotated videos, logs, reports
+
+# --------------------------------------------------------------------------
+# Phase 1 (deliverable): unified dataset builder
+# Each source is remapped into ONE common taxonomy, merged, split, and
+# (optionally) run through adaptive enhancement into data/processed.
+# task: "helmet" -> uses helmet_detector.class_names as the target taxonomy
+#       "wheel"  -> uses wheel_classifier.class_names as the target taxonomy
+# --------------------------------------------------------------------------
+dataset_builder:
+  task: "helmet"                        # "helmet" | "wheel"
+  output_dir: "data/unified"
+  val_split: 0.2
+  seed: 42
+  apply_enhancement: true               # run scene-adaptive enhancement on images
+  sources:
+    # --- Example: a YOLO-format detection dataset on disk ---
+    - name: "example_helmet_yolo"
+      format: "yolo"                    # "yolo" | "coco" | "folder"
+      images_dir: "data/raw/example_helmet/images"
+      labels_dir: "data/raw/example_helmet/labels"
+      # map SOURCE class id -> UNIFIED class id (drop if absent)
+      class_map: {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6}
+    # --- Example: a classification dataset laid out as folder-per-class ---
+    # - name: "example_wheel_cls"
+    #   format: "folder"
+    #   images_dir: "data/raw/example_wheel"
+    #   class_map: {"two_wheeler": 0, "auto": 1, "car": 2, "truck": 3}
+
+# --------------------------------------------------------------------------
+# Phase 1: Scene classification + adaptive enhancement
+# --------------------------------------------------------------------------
+scene_classifier:
+  # Mean luminance (0-255) below this => candidate NIGHT
+  night_luminance_max: 70.0
+  # Laplacian variance below this => low texture => candidate FOG
+  fog_laplacian_max: 100.0
+  # Saturation mean below this reinforces FOG (washed-out, grey)
+  fog_saturation_max: 40.0
+  # Blue-channel dominance + high-frequency streaks => RAIN heuristic
+  rain_bluecast_min: 1.05               # blue/red mean ratio threshold
+  rain_hf_energy_min: 0.018             # normalized high-frequency energy
+
+# Learned scene classifier (RandomForest over rich image features).
+# Trained by train_scene_classifier.py; falls back to rules if model absent.
+scene_classifier_ml:
+  model_path: "weights/scene_classifier.joblib"
+  use_learned: true                     # main.py prefers learned model if present
+
+enhancements:
+  clahe_clip_limit: 3.0
+  clahe_tile_grid: [8, 8]
+  dcp_omega: 0.95                       # dehaze haze-retention factor
+  dcp_patch_size: 15                    # dark-channel patch window
+  dcp_t_min: 0.1                        # lower bound on transmission map
+  guided_radius: 60
+  guided_eps: 0.0001
+  denoise_h: 7                          # fastNlMeans luminance strength
+
+# --------------------------------------------------------------------------
+# Phase 2: Detection / classification models
+# --------------------------------------------------------------------------
+helmet_detector:
+  weights: "weights/helmet_yolov8.pt"   # fine-tuned 7-class model
+  fallback_weights: "yolov8n.pt"        # auto-downloaded if custom missing
+  conf_threshold: 0.35
+  iou_threshold: 0.5
+  imgsz: 640
+  class_names:
+    0: "No Helmet"
+    1: "Full-Face Helmet"
+    2: "Half-Face Helmet"
+    3: "Strap Unfastened"
+    4: "Helmet on Handlebar"
+    5: "Helmet on Arm"
+    6: "Rider"
+
+wheel_classifier:
+  backend: "yolo"                       # "yolo" | "cnn"  (benchmark switch)
+  yolo_weights: "weights/wheel_yolov8_cls.pt"
+  cnn_weights: "weights/wheel_cnn.pt"
+  imgsz: 128
+  class_names:
+    0: "2-Wheeler"
+    1: "3-Wheeler"
+    2: "4-Wheeler"
+    3: "6+ Wheeler"
+  # Legal wheel-count categories per lane type (used by risk indexer)
+  allowed_classes: [0, 1, 2, 3]
+
+# --------------------------------------------------------------------------
+# Phase 3: Tracking + ReID + risk
+# --------------------------------------------------------------------------
+tracker:
+  max_age: 30                           # frames to keep a lost track
+  n_init: 3                             # confirmations before a track is valid
+  max_iou_distance: 0.7
+  embedder: "mobilenet"                 # DeepSORT appearance embedder
+  vote_window: 15                       # frames used for wheel-count voting
+
+reid:
+  model_name: "osnet_x0_25"             # lightweight OSNet for CPU
+  weights: "weights/osnet_x0_25.pth"
+  match_threshold: 0.55                 # cosine distance for cross-cam match
+  gallery_ttl: 300                      # seconds to retain a global identity
+
+demographics:
+  enabled: true
+  detector_backend: "opencv"            # face detector for DeepFace
+  min_face_size: 32
+
+risk_indexer:
+  weights:
+    w1_wheel_violation: 2.0
+    w2_helmet_misuse: 2.5
+    w3_overload: 1.5                    # rider count > 2
+    w4_wrong_way: 3.0
+  thresholds:
+    low_max: 3.0                        # R < 3      => LOW
+    medium_max: 6.0                     # 3 <= R < 6 => MEDIUM ; R >= 6 => HIGH
+  max_riders_allowed: 2
+
+# --------------------------------------------------------------------------
+# Phase 4: Optimization
+# --------------------------------------------------------------------------
+optimization:
+  quantize: true
+  prune_amount: 0.30                    # 30% structured sparsity
+  onnx_opset: 17
+  onnx_output: "weights/model_int8.onnx"
+
+# --------------------------------------------------------------------------
+# Runtime
+# --------------------------------------------------------------------------
+runtime:
+  device: "cpu"
+  target_fps: 15
+  save_annotated: true
+  show_window: false                    # set true for local cv2.imshow preview
