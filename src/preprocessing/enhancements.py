@@ -115,6 +115,14 @@ class FrameEnhancer:
         t = transmission[:, :, np.newaxis]
         recovered = (img - A.reshape(1, 1, 3)) / t + A.reshape(1, 1, 3)
         recovered = np.clip(recovered, 0.0, 1.0)
+
+        # DCP removes the haze's additive brightness, so the result comes out
+        # darker than the input. Restore luminance to roughly the input mean so
+        # detail is recovered *and* the frame stays usable for detection.
+        in_mean = float(img.mean()) + 1e-6
+        out_mean = float(recovered.mean()) + 1e-6
+        gain = np.clip(in_mean / out_mean, 1.0, 2.5)
+        recovered = np.clip(recovered * gain, 0.0, 1.0)
         return (recovered * 255.0).astype(np.uint8)
 
     # ------------------------------------------------------------------ #
