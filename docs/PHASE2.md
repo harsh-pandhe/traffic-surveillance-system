@@ -16,18 +16,20 @@ classification with a Precision/Recall/mAP comparison and a selected model, and
 
 ## Part A — Wheel-count classification (CNN vs YOLO)
 
-Classes built from COCO val2017 instances: **2-Wheeler** (bicycle, motorcycle),
-**4-Wheeler** (car), **6+ Wheeler** (bus, truck). The **3-Wheeler** class needs a
-supplementary auto-rickshaw set (not present in COCO) — see *Known gaps*.
-
-Trained on ImageFolder crops (`data/wheels/{train,val}`), 96×96, CPU.
+All **four** classes represented: **2-Wheeler** (bicycle, motorcycle from COCO),
+**3-Wheeler** (auto-rickshaw crops from the AUTO-RICKSHAW-DETECTION set),
+**4-Wheeler** (car), **6+ Wheeler** (bus, truck). Balanced ~308–350 train per
+class. Trained on ImageFolder crops (`data/wheels/{train,val}`), 96×96, CPU.
 
 | Model | Accuracy | Macro-P | Macro-R | Macro-F1 | Latency (ms) |
 |---|---|---|---|---|---|
-| SmallCNN (custom baseline) | 0.685 | 0.729 | 0.690 | 0.672 | 1.6 |
-| **YOLOv8-cls (selected)** | **0.835** | 0.843 | 0.836 | 0.838 | 3.6 |
+| SmallCNN (custom baseline) | 0.639 | 0.640 | 0.637 | 0.627 | 1.9 |
+| **YOLOv8-cls (selected)** | **0.867** | 0.865 | 0.867 | 0.865 | 3.2 |
 
-**Selected model: YOLOv8-cls** — +15 points accuracy over the CNN baseline at a
+Per-class F1 (YOLOv8-cls): 2-Wheeler 0.91, 3-Wheeler 0.96, 4-Wheeler 0.81,
+6+ Wheeler 0.78.
+
+**Selected model: YOLOv8-cls** — +23 points accuracy over the CNN baseline at a
 small latency cost. Weights: `weights/wheel_cnn.pt`, YOLO run under `runs/`.
 
 ## Part B — Granular helmet compliance (YOLOv8)
@@ -69,12 +71,11 @@ Metrics persisted in `results/phase2/*.json`.
 
 ## Known gaps
 
-1. **3-Wheeler class**: COCO has no auto-rickshaw category. Drop an
-   auto-rickshaw image set into `data/raw/auto_rickshaw/` and rerun
-   `build_wheel_dataset.py --extra3` to activate the 4th class.
-2. Helmet dataset taxonomy (driver/passenger × helmet/no-helmet + bike) maps to
+1. Helmet dataset taxonomy (driver/passenger × helmet/no-helmet + bike) maps to
    the project's 7-class compliance scheme; strap/hanging/arm sub-classes need a
    dedicated dataset (future data collection).
+2. Passenger-helmet classes have the fewest instances — targeted collection or
+   augmentation would raise their AP (issue #8).
 
 ## Deliverable checklist
 
@@ -83,4 +84,4 @@ Metrics persisted in `results/phase2/*.json`.
 - [x] Precision/Recall/mAP comparison + selected model
 - [x] Granular helmet-compliance detector (7 classes, mAP reported)
 - [x] Reproduction scripts + persisted metrics
-- [ ] 3-Wheeler class (pending auto-rickshaw data)
+- [x] 3-Wheeler class (auto-rickshaw crops) — all 4 wheel classes active

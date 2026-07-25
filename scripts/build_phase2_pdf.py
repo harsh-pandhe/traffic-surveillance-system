@@ -1,0 +1,155 @@
+"""
+scripts/build_phase2_pdf.py
+---------------------------
+Build the Phase 2 report PDF from results/phase2/*.json + outputs/report_p2/*.png.
+Output -> docs/Phase2_Report.pdf
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.lib.utils import ImageReader
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
+                                TableStyle, Image, PageBreak, HRFlowable)
+
+A = "outputs/report_p2"
+OUT_PDF = "docs/Phase2_Report.pdf"
+REPO = "https://github.com/harsh-pandhe/traffic-surveillance-system"
+W = json.load(open("results/phase2/wheel_metrics.json"))
+H = json.load(open("results/phase2/helmet_metrics.json"))
+
+NAVY = colors.HexColor("#1b2a4a"); BLUE = colors.HexColor("#2e86c1")
+LIGHT = colors.HexColor("#eaf2f8"); GREY = colors.HexColor("#5d6d7e")
+
+styles = getSampleStyleSheet()
+styles.add(ParagraphStyle("H1c", parent=styles["Heading1"], textColor=NAVY, spaceBefore=10, spaceAfter=6))
+styles.add(ParagraphStyle("H2c", parent=styles["Heading2"], textColor=BLUE, fontSize=13, spaceBefore=8, spaceAfter=4))
+styles.add(ParagraphStyle("Body", parent=styles["Normal"], alignment=TA_JUSTIFY, fontSize=9.5, leading=14, spaceAfter=6))
+styles.add(ParagraphStyle("Cap", parent=styles["Normal"], alignment=TA_CENTER, fontSize=8.5, textColor=GREY, spaceAfter=10))
+styles.add(ParagraphStyle("TitleBig", parent=styles["Title"], textColor=NAVY, fontSize=22, leading=26))
+styles.add(ParagraphStyle("Sub", parent=styles["Normal"], alignment=TA_CENTER, fontSize=11, textColor=GREY))
+BODY = styles["Body"]
+story = []
+
+
+def p(t, s="Body"): story.append(Paragraph(t, styles[s]))
+def sp(h=6): story.append(Spacer(1, h))
+def hr(): story.append(HRFlowable(width="100%", thickness=0.8, color=BLUE, spaceBefore=4, spaceAfter=8))
+
+
+def img(name, width=15*cm, cap=None):
+    path = os.path.join(A, name)
+    if not os.path.isfile(path): return
+    iw, ih = ImageReader(path).getSize()
+    story.append(Image(path, width=width, height=width*ih/iw))
+    story.append(Paragraph(cap, styles["Cap"]) if cap else Spacer(1, 8))
+
+
+def table(data, cw, header=True, font=8.5):
+    t = Table(data, colWidths=cw, hAlign="CENTER")
+    ts = [("FONTSIZE", (0,0),(-1,-1), font), ("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#c8d0d8")),
+          ("VALIGN",(0,0),(-1,-1),"MIDDLE"), ("TOPPADDING",(0,0),(-1,-1),3),
+          ("BOTTOMPADDING",(0,0),(-1,-1),3), ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white,LIGHT]),
+          ("ALIGN",(1,1),(-1,-1),"CENTER"), ("ALIGN",(0,1),(0,-1),"LEFT")]
+    if header:
+        ts += [("BACKGROUND",(0,0),(-1,0),NAVY),("TEXTCOLOR",(0,0),(-1,0),colors.white),
+               ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("ALIGN",(0,0),(-1,0),"CENTER")]
+    t.setStyle(TableStyle(ts)); story.append(t); sp(10)
+
+
+# ---- Title ----
+sp(38)
+p("Adaptive Spatio-Temporal Traffic Surveillance", "TitleBig"); sp(6)
+p("Phase 2 — Model Training &amp; Granular Helmet Compliance", "Sub"); sp(16); hr()
+meta = [["Milestone", "Phase 2 of 4 (Days 6–12): Model Training &amp; Helmet Compliance"],
+        ["Author", "Harsh Pandhe"],
+        ["Repository", REPO],
+        ["Wheel model", f"YOLOv8-cls selected — {W['yolo']['accuracy']*100:.1f}% accuracy (4 classes)"],
+        ["Helmet model", f"YOLOv8n — mAP@50 {H['mAP50']:.3f} (7 classes)"]]
+table([[Paragraph(f"<b>{k}</b>", BODY), Paragraph(v, BODY)] for k, v in meta], [3.2*cm, 12.3*cm], header=False)
+sp(8)
+p("<b>Executive summary.</b> Phase 2 delivers two trained models on real data. "
+  "For wheel-count classification, a custom SmallCNN baseline is benchmarked "
+  "against YOLOv8-cls across four classes (2/3/4/6+ wheelers); YOLOv8-cls is "
+  "selected at 86.7% accuracy vs 63.9% for the CNN. For helmet compliance, a "
+  "YOLOv8n detector is fine-tuned on a 7-class rider/helmet dataset, reaching "
+  "mAP@50 0.731. All metrics are recomputed from the datasets and persisted in "
+  "results/phase2/.")
+story.append(PageBreak())
+
+# ---- Part A ----
+p("1. Wheel-Count Classification — CNN vs YOLO", "H1c"); hr()
+p("Four classes: 2-Wheeler (bicycle/motorcycle, COCO), 3-Wheeler (auto-rickshaw "
+  "crops), 4-Wheeler (car), 6+ Wheeler (bus/truck). Balanced ~308–350 train "
+  "images per class, 96×96 crops, CPU training.")
+table([["Model","Accuracy","Macro-P","Macro-R","Macro-F1","Latency (ms)"],
+       ["SmallCNN (baseline)", f"{W['cnn']['accuracy']:.3f}", f"{W['cnn']['precision']:.3f}",
+        f"{W['cnn']['recall']:.3f}", f"{W['cnn']['f1']:.3f}", f"{W['cnn']['latency_ms']:.1f}"],
+       ["YOLOv8-cls (selected)", f"{W['yolo']['accuracy']:.3f}", f"{W['yolo']['precision']:.3f}",
+        f"{W['yolo']['recall']:.3f}", f"{W['yolo']['f1']:.3f}", f"{W['yolo']['latency_ms']:.1f}"]],
+      [4.0*cm,2.3*cm,2.3*cm,2.3*cm,2.3*cm,2.3*cm])
+img("wheel_compare.png", 11*cm, "Figure 1. Accuracy and macro-F1: CNN vs YOLO.")
+img("wheel_perclass.png", 13*cm, "Figure 2. Per-class F1. YOLO wins every class; 3-Wheeler is the strongest (F1 0.96).")
+img("wheel_composition.png", 11*cm, "Figure 3. Balanced 4-class wheel dataset.")
+story.append(PageBreak())
+
+# ---- Part B ----
+p("2. Granular Helmet Compliance — YOLOv8n", "H1c"); hr()
+p("7-class rider/helmet detection (driver/passenger × helmet/no-helmet + bike), "
+  "368 train / 65 val / 52 test, YOLO format. Fine-tuned YOLOv8n, 25 epochs, "
+  "416×416, CPU.")
+table([["Metric","Value"],
+       ["mAP@50", f"{H['mAP50']:.3f}"],["mAP@50-95", f"{H['mAP50_95']:.3f}"],
+       ["Precision", f"{H['precision']:.3f}"],["Recall", f"{H['recall']:.3f}"]],
+      [7*cm, 4*cm])
+img("helmet_ap.png", 13*cm, "Figure 4. Per-class AP@50 (red = below the mAP line).")
+img("helmet_sample.png", 12*cm, "Figure 5. Trained detector on a real test image — riders, bikes, and helmet status.")
+p("Passenger-helmet classes are weakest (fewest instances, small objects) — "
+  "tracked as follow-up issue #8.")
+story.append(PageBreak())
+
+# ---- reproduce + gaps ----
+p("3. Reproduce", "H1c"); hr()
+table([["Command","Purpose"],
+       ["python scripts/build_wheel_dataset.py","Build 4-class wheel crops"],
+       ["python scripts/train_wheel_classifier.py","Train + benchmark CNN vs YOLO"],
+       ["python scripts/train_helmet_detector.py --data ...","Train + eval helmet detector"],
+       ["python scripts/make_phase2_assets.py","Regenerate this report's figures"]],
+      [8.4*cm, 7.1*cm])
+
+p("4. Status &amp; Follow-ups", "H1c"); hr()
+table([["Deliverable","Status"],
+       ["Baseline CNN trained","Complete"],
+       ["YOLO model trained (wheel + helmet)","Complete"],
+       ["P/R/mAP comparison + selected model","Complete"],
+       ["3-Wheeler class (auto-rickshaw)","Complete (issue closed)"],
+       ["Granular helmet detector (7-class mAP)","Complete"],
+       ["Low AP passenger-helmet classes","Open (issue #8)"]],
+      [11.5*cm, 4.0*cm])
+p("<b>Conclusion.</b> Phase 2 is complete: both models trained and benchmarked "
+  "on real data, all four wheel classes active, and the granular helmet detector "
+  "reporting per-class AP. Every figure is reproducible from the committed code.")
+
+
+def _footer(cv, doc):
+    cv.saveState(); cv.setFont("Helvetica", 7.5); cv.setFillColor(GREY)
+    cv.drawString(2*cm, 1.1*cm, "Adaptive Traffic Surveillance — Phase 2 Report")
+    cv.drawRightString(A4[0]-2*cm, 1.1*cm, f"Page {doc.page}")
+    cv.setStrokeColor(BLUE); cv.line(2*cm, 1.4*cm, A4[0]-2*cm, 1.4*cm); cv.restoreState()
+
+
+os.makedirs("docs", exist_ok=True)
+SimpleDocTemplate(OUT_PDF, pagesize=A4, topMargin=1.6*cm, bottomMargin=1.8*cm,
+                  leftMargin=2*cm, rightMargin=2*cm,
+                  title="Phase 2 Report", author="Harsh Pandhe").build(
+    story, onFirstPage=_footer, onLaterPages=_footer)
+print(f"PDF -> {OUT_PDF}")
