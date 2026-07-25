@@ -1,0 +1,25 @@
+{
+  "model": "YOLOv8n",
+  "mAP50": 0.7310288659069867,
+  "mAP50_95": 0.3849839191596598,
+  "precision": 0.7407834197466074,
+  "recall": 0.6676708075582818,
+  "per_class_ap50": {
+    "driver_with_helmet": 0.7843848034920698,
+    "bike": 0.8628153108443489,
+    "driver": 0.8412637572771984,
+    "passenger_with_helmet": 0.5598381413560926,
+    "passenger": 0.8122572069061543,
+    "driver_without_helmet": 0.6798752316709337,
+    "passenger_without_helmet": 0.5767676098021097
+  },
+  "classes": [
+    "driver_with_helmet",
+    "bike",
+    "driver",
+    "passenger_with_helmet",
+    "passenger",
+    "driver_without_helmet",
+    "passenger_without_helmet"
+  ]
+}
