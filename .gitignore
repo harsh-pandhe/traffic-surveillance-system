@@ -24,3 +24,9 @@ outputs/
 .DS_Store
 .idea/
 .vscode/
+
+# Ultralytics runtime artifacts
+/yolov8*.pt
+runs/
+data/wheels/
+data/helmet/
