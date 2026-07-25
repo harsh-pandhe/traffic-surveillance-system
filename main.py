@@ -37,7 +37,7 @@ from utils import visualization as viz
 
 from src.preprocessing.scene_classifier import SceneClassifier
 from src.preprocessing.enhancements import FrameEnhancer
-from src.models.helmet_detector import HelmetDetector, RIDER
+from src.models.helmet_detector import HelmetDetector
 from src.models.benchmark_classifier import WheelClassifier, WHEEL_CLASS_NAMES
 from src.tracking.deepsort_tracker import VehicleTracker
 from src.tracking.multi_camera_reid import VehicleReID
@@ -106,7 +106,7 @@ class SurveillancePipeline:
         dets = self.helmet.detect(enhanced)
 
         # Split rider detections (they become the vehicles we track).
-        rider_dets = [d for d in dets if d.cls_id == RIDER]
+        rider_dets = [d for d in dets if d.is_rider]
         helmet_violations = self.helmet.count_violations(dets)
         rider_count = max(self.helmet.count_riders(dets), len(rider_dets))
 
