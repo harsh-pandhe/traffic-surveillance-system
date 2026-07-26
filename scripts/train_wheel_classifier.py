@@ -56,12 +56,12 @@ def loaders(root, imgsz, batch):
             tr.classes)
 
 
-def train_cnn(root, imgsz, epochs, batch, lr):
-    dev = torch.device("cpu")
+def train_torch(model, tag, save_as, root, imgsz, epochs, batch, lr):
+    """Generic CPU training/eval loop shared by the SmallCNN and CSPNeXt arms."""
     dl_tr, dl_va, classes = loaders(root, imgsz, batch)
-    model = SmallCNN(num_classes=len(classes)).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
-    lossf = nn.CrossEntropyLoss()
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
+    lossf = nn.CrossEntropyLoss(label_smoothing=0.05)
 
     for ep in range(epochs):
         model.train()
@@ -71,9 +71,9 @@ def train_cnn(root, imgsz, epochs, batch, lr):
             loss = lossf(model(x), y)
             loss.backward(); opt.step()
             tot += loss.item() * x.size(0)
-        print(f"  [CNN] epoch {ep+1}/{epochs}  loss={tot/len(dl_tr.dataset):.3f}")
+        sched.step()
+        print(f"  [{tag}] epoch {ep+1}/{epochs}  loss={tot/len(dl_tr.dataset):.3f}")
 
-    # Evaluate
     model.eval()
     ys, ps, lat = [], [], []
     with torch.no_grad():
@@ -82,8 +82,27 @@ def train_cnn(root, imgsz, epochs, batch, lr):
             out = model(x)
             lat.append((time.perf_counter() - t0) / x.size(0) * 1000)
             ps.extend(out.argmax(1).tolist()); ys.extend(y.tolist())
-    torch.save(model.state_dict(), "weights/wheel_cnn.pt")
-    return _metrics("SmallCNN", ys, ps, classes, float(np.mean(lat)))
+    torch.save(model.state_dict(), save_as)
+    n_params = sum(p.numel() for p in model.parameters())
+    m = _metrics(tag, ys, ps, classes, float(np.mean(lat)))
+    m["params_m"] = n_params / 1e6
+    return m
+
+
+def train_cnn(root, imgsz, epochs, batch, lr):
+    _, _, classes = loaders(root, imgsz, batch)
+    model = SmallCNN(num_classes=len(classes))
+    return train_torch(model, "SmallCNN", "weights/wheel_cnn.pt",
+                       root, imgsz, epochs, batch, lr)
+
+
+def train_cspnext(root, imgsz, epochs, batch, lr):
+    """RTMDet arm: the CSPNeXt backbone (RTMDet's architecture) as a classifier."""
+    from src.models.cspnext import CSPNeXtClassifier
+    _, _, classes = loaders(root, imgsz, batch)
+    model = CSPNeXtClassifier(num_classes=len(classes))
+    return train_torch(model, "RTMDet-CSPNeXt", "weights/wheel_cspnext.pt",
+                       root, imgsz, epochs, batch, lr)
 
 
 def train_yolo(root, imgsz, epochs, batch):
@@ -135,6 +154,14 @@ def main():
     print("=== Training SmallCNN baseline ===")
     cnn = train_cnn(args.root, args.imgsz, args.epochs, args.batch, args.lr)
 
+    print("\n=== Training RTMDet (CSPNeXt) ===")
+    try:
+        cspnext = train_cspnext(args.root, args.imgsz, args.epochs,
+                                args.batch, args.lr)
+    except Exception as exc:
+        print(f"[RTMDet-CSPNeXt] training failed: {exc}")
+        cspnext = None
+
     print("\n=== Training YOLOv8-cls ===")
     try:
         yolo = train_yolo(args.root, args.imgsz, args.yolo_epochs, args.batch)
@@ -142,11 +169,18 @@ def main():
         print(f"[YOLOv8-cls] training failed: {exc}")
         yolo = None
 
-    results = {"cnn": cnn, "yolo": yolo}
-    if yolo:
-        winner = "SmallCNN" if cnn["accuracy"] >= yolo["accuracy"] else "YOLOv8-cls"
-        results["selected"] = winner
-        print(f"\n=== Selected model: {winner} ===")
+    results = {"cnn": cnn, "cspnext": cspnext, "yolo": yolo}
+    arms = [(k, v) for k, v in results.items() if v]
+    if arms:
+        winner = max(arms, key=lambda kv: kv[1]["accuracy"])
+        results["selected"] = winner[1]["model"]
+        print(f"\n=== Selected model: {winner[1]['model']} "
+              f"(acc {winner[1]['accuracy']:.3f}) ===")
+        print("\n--- Benchmark summary ---")
+        for _, m in arms:
+            pm = f"{m.get('params_m', float('nan')):.2f}M" if m.get('params_m') else "n/a"
+            print(f"  {m['model']:16s} acc={m['accuracy']:.3f} "
+                  f"F1={m['f1']:.3f} lat={m['latency_ms']:.1f}ms params={pm}")
     with open(f"{OUT}/wheel_metrics.json", "w") as fh:
         json.dump(results, fh, indent=2)
     print(f"metrics -> {OUT}/wheel_metrics.json")

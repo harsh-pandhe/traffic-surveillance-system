@@ -1,0 +1,94 @@
+{
+  "accuracy": 0.7909090909090909,
+  "n_val": 220,
+  "n_total": 1100,
+  "counts": {
+    "FOG": 300,
+    "RAIN": 200,
+    "NIGHT": 300,
+    "DAY": 300
+  },
+  "confusion": [
+    [
+      52,
+      6,
+      1,
+      1
+    ],
+    [
+      6,
+      53,
+      0,
+      1
+    ],
+    [
+      3,
+      0,
+      43,
+      14
+    ],
+    [
+      2,
+      0,
+      12,
+      26
+    ]
+  ],
+  "labels": [
+    "DAY",
+    "NIGHT",
+    "FOG",
+    "RAIN"
+  ],
+  "per_class": {
+    "DAY": {
+      "precision": 0.8253968253968254,
+      "recall": 0.8666666666666667,
+      "f1-score": 0.8455284552845529,
+      "support": 60.0
+    },
+    "NIGHT": {
+      "precision": 0.8983050847457628,
+      "recall": 0.8833333333333333,
+      "f1-score": 0.8907563025210085,
+      "support": 60.0
+    },
+    "FOG": {
+      "precision": 0.7678571428571429,
+      "recall": 0.7166666666666667,
+      "f1-score": 0.7413793103448276,
+      "support": 60.0
+    },
+    "RAIN": {
+      "precision": 0.6190476190476191,
+      "recall": 0.65,
+      "f1-score": 0.6341463414634146,
+      "support": 40.0
+    }
+  },
+  "feature_importance": {
+    "luminance_mean": 0.13467482507980977,
+    "dark_channel_mean": 0.11538179270080977,
+    "log_laplacian": 0.11401867761476368,
+    "laplacian_var": 0.10468386582639619,
+    "value_mean": 0.07832328262518144,
+    "edge_density": 0.07340705107901625,
+    "saturation_mean": 0.058109119445132175,
+    "hf_energy": 0.04982976306302854,
+    "colorfulness": 0.047275101744860576,
+    "saturation_std": 0.0465775818135615,
+    "blue_red_ratio": 0.03987717934579008,
+    "contrast": 0.03983389256415441,
+    "luminance_std": 0.039522298253749075,
+    "bright_pixel_ratio": 0.030734431233457905,
+    "blue_green_ratio": 0.02775113761028873
+  },
+  "top_features": [
+    "luminance_mean",
+    "dark_channel_mean",
+    "log_laplacian",
+    "laplacian_var",
+    "value_mean",
+    "edge_density"
+  ]
+}

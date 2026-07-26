@@ -21,16 +21,49 @@ All **four** classes represented: **2-Wheeler** (bicycle, motorcycle from COCO),
 **4-Wheeler** (car), **6+ Wheeler** (bus, truck). Balanced ~308–350 train per
 class. Trained on ImageFolder crops (`data/wheels/{train,val}`), 96×96, CPU.
 
-| Model | Accuracy | Macro-P | Macro-R | Macro-F1 | Latency (ms) |
-|---|---|---|---|---|---|
-| SmallCNN (custom baseline) | 0.639 | 0.640 | 0.637 | 0.627 | 1.9 |
-| **YOLOv8-cls (selected)** | **0.867** | 0.865 | 0.867 | 0.865 | 3.2 |
+Three architectures benchmarked under identical data and evaluation protocol:
+
+| Model | Accuracy | Macro-P | Macro-R | Macro-F1 | Latency (ms) | Params | Epochs | Pretrained |
+|---|---|---|---|---|---|---|---|---|
+| SmallCNN (custom baseline) | 0.751 | 0.752 | 0.750 | 0.750 | 1.8 | 0.24M | 12 | none |
+| RTMDet (CSPNeXt) | 0.683 | 0.688 | 0.686 | 0.683 | 0.6 | 2.35M | 40 | none |
+| **YOLOv8-cls (selected)** | **0.867** | 0.865 | 0.867 | 0.865 | 3.4 | — | 8 | ImageNet |
 
 Per-class F1 (YOLOv8-cls): 2-Wheeler 0.91, 3-Wheeler 0.96, 4-Wheeler 0.81,
 6+ Wheeler 0.78.
 
-**Selected model: YOLOv8-cls** — +23 points accuracy over the CNN baseline at a
-small latency cost. Weights: `weights/wheel_cnn.pt`, YOLO run under `runs/`.
+**Selected model: YOLOv8-cls.**
+
+### Methodological note (important for the paper)
+
+The comparison is **not pretraining-neutral**. YOLOv8-cls starts from ImageNet
+weights; SmallCNN and CSPNeXt are trained from scratch on ~1,350 crops. Two
+consequences:
+
+1. YOLOv8-cls's margin partly reflects transfer learning, not just architecture.
+2. CSPNeXt (2.35M params) is the largest model but has the least data per
+   parameter, so it underfits this dataset. At 12 epochs it scored only 0.562;
+   extending to 40 epochs (training loss 0.95 → 0.26, converged) lifted it to
+   0.683. It is the **fastest** model at inference (0.6 ms) despite being the
+   largest — CSPNeXt's depthwise 5×5 design is efficient on CPU.
+
+Conclusion: for this dataset size, ImageNet-pretrained YOLOv8-cls is the right
+production choice; CSPNeXt would be expected to close the gap given either
+pretrained weights or an order of magnitude more data.
+
+### RTMDet implementation note
+
+`mmdetection`/`mmcv` (the official RTMDet home) cannot be installed in this
+environment: `openmim` fails on Python 3.12 (`AttributeError: module 'pkgutil'
+has no attribute 'ImpImporter'`) and `mmcv` publishes no wheels for
+torch 2.12. RTMDet's architectural contribution — the **CSPNeXt** backbone — is
+therefore reimplemented directly in PyTorch in `src/models/cspnext.py`,
+following the RTMDet paper (depthwise 5×5 CSP blocks, channel attention, SiLU,
+SPPF, RTMDet-tiny scaling). This keeps the contract's CNN-vs-RTMDet comparison
+honest and runnable on CPU.
+
+Weights: `weights/wheel_cnn.pt`, `weights/wheel_cspnext.pt`,
+`weights/wheel_yolov8_cls.pt`.
 
 ## Part B — Granular helmet compliance (YOLOv8)
 

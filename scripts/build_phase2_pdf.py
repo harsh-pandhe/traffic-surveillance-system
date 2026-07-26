@@ -73,33 +73,59 @@ p("Phase 2 — Model Training &amp; Granular Helmet Compliance", "Sub"); sp(16);
 meta = [["Milestone", "Phase 2 of 4 (Days 6–12): Model Training &amp; Helmet Compliance"],
         ["Author", "Harsh Pandhe"],
         ["Repository", REPO],
-        ["Wheel model", f"YOLOv8-cls selected — {W['yolo']['accuracy']*100:.1f}% accuracy (4 classes)"],
+        ["Wheel model", f"{W['selected']} selected — "
+                        f"{W[[k for k in ('cnn','cspnext','yolo') if W.get(k) and W[k]['model']==W['selected']][0]]['accuracy']*100:.1f}% "
+                        f"accuracy (4 classes, 3 architectures compared)"],
         ["Helmet model", f"YOLOv8n — mAP@50 {H['mAP50']:.3f} (7 classes)"]]
 table([[Paragraph(f"<b>{k}</b>", BODY), Paragraph(v, BODY)] for k, v in meta], [3.2*cm, 12.3*cm], header=False)
 sp(8)
-p("<b>Executive summary.</b> Phase 2 delivers two trained models on real data. "
-  "For wheel-count classification, a custom SmallCNN baseline is benchmarked "
-  "against YOLOv8-cls across four classes (2/3/4/6+ wheelers); YOLOv8-cls is "
-  "selected at 86.7% accuracy vs 63.9% for the CNN. For helmet compliance, a "
-  "YOLOv8n detector is fine-tuned on a 7-class rider/helmet dataset, reaching "
-  "mAP@50 0.731. All metrics are recomputed from the datasets and persisted in "
-  "results/phase2/.")
+p("<b>Executive summary.</b> Phase 2 delivers trained models on real data. For "
+  "wheel-count classification, three architectures are benchmarked under an "
+  "identical protocol across four classes (2/3/4/6+ wheelers): a custom SmallCNN "
+  "baseline (0.751), RTMDet's CSPNeXt backbone (0.683), and YOLOv8-cls (0.867, "
+  "selected). For helmet compliance, a YOLOv8n detector is fine-tuned on a "
+  "7-class rider/helmet dataset, reaching mAP@50 0.731. All metrics are "
+  "recomputed from the datasets and persisted in results/phase2/; the "
+  "pretraining asymmetry between the arms is stated explicitly rather than "
+  "glossed over.")
 story.append(PageBreak())
 
 # ---- Part A ----
-p("1. Wheel-Count Classification — CNN vs YOLO", "H1c"); hr()
+p("1. Wheel-Count Classification — CNN vs RTMDet vs YOLO", "H1c"); hr()
 p("Four classes: 2-Wheeler (bicycle/motorcycle, COCO), 3-Wheeler (auto-rickshaw "
   "crops), 4-Wheeler (car), 6+ Wheeler (bus/truck). Balanced ~308–350 train "
   "images per class, 96×96 crops, CPU training.")
-table([["Model","Accuracy","Macro-P","Macro-R","Macro-F1","Latency (ms)"],
-       ["SmallCNN (baseline)", f"{W['cnn']['accuracy']:.3f}", f"{W['cnn']['precision']:.3f}",
-        f"{W['cnn']['recall']:.3f}", f"{W['cnn']['f1']:.3f}", f"{W['cnn']['latency_ms']:.1f}"],
-       ["YOLOv8-cls (selected)", f"{W['yolo']['accuracy']:.3f}", f"{W['yolo']['precision']:.3f}",
-        f"{W['yolo']['recall']:.3f}", f"{W['yolo']['f1']:.3f}", f"{W['yolo']['latency_ms']:.1f}"]],
-      [4.0*cm,2.3*cm,2.3*cm,2.3*cm,2.3*cm,2.3*cm])
-img("wheel_compare.png", 11*cm, "Figure 1. Accuracy and macro-F1: CNN vs YOLO.")
-img("wheel_perclass.png", 13*cm, "Figure 2. Per-class F1. YOLO wins every class; 3-Wheeler is the strongest (F1 0.96).")
-img("wheel_composition.png", 11*cm, "Figure 3. Balanced 4-class wheel dataset.")
+_arms = [k for k in ("cnn", "cspnext", "yolo") if W.get(k)]
+_rows = [["Model","Acc","Macro-P","Macro-R","Macro-F1","Lat (ms)","Params","Pretrained"]]
+for k in _arms:
+    m = W[k]
+    pm = f"{m['params_m']:.2f}M" if m.get("params_m") else "—"
+    pre = "ImageNet" if "imagenet" in str(m.get("pretrained","")).lower() else "scratch"
+    nm = m["model"] + (" (selected)" if m["model"] == W.get("selected") else "")
+    _rows.append([nm, f"{m['accuracy']:.3f}", f"{m['precision']:.3f}",
+                  f"{m['recall']:.3f}", f"{m['f1']:.3f}",
+                  f"{m['latency_ms']:.1f}", pm, pre])
+table(_rows, [3.5*cm,1.7*cm,1.9*cm,1.9*cm,2.0*cm,1.7*cm,1.5*cm,1.8*cm], font=7.5)
+img("wheel_compare.png", 11.5*cm, "Figure 1. Accuracy and macro-F1 across the three architectures.")
+img("wheel_perclass.png", 13*cm, "Figure 2. Per-class F1. YOLO leads every class; 3-Wheeler is the strongest (F1 0.96).")
+img("wheel_composition.png", 10.5*cm, "Figure 3. Balanced 4-class wheel dataset.")
+p("Methodological note", "H2c")
+p("This comparison is <b>not pretraining-neutral</b>. YOLOv8-cls starts from "
+  "ImageNet weights; SmallCNN and CSPNeXt train from scratch on ~1,350 crops, so "
+  "part of YOLO's margin is transfer learning rather than architecture. CSPNeXt "
+  "(2.35M params) has the least data per parameter and underfits: it scored 0.562 "
+  "at 12 epochs and 0.683 at 40 epochs (training loss 0.95 to 0.26, converged). "
+  "Notably it is the <b>fastest at inference</b> (0.6 ms) despite being the "
+  "largest — the depthwise 5x5 CSP design is CPU-efficient. For this dataset "
+  "size the pretrained YOLOv8-cls is the correct production choice.")
+p("RTMDet implementation", "H2c")
+p("mmdetection/mmcv (RTMDet's official home) will not install here: openmim "
+  "fails on Python 3.12 (<font face='Courier' size=8>pkgutil.ImpImporter</font> "
+  "removed) and mmcv ships no wheels for torch 2.12. RTMDet's architectural "
+  "contribution — the CSPNeXt backbone — is therefore reimplemented directly in "
+  "PyTorch (<font face='Courier' size=8>src/models/cspnext.py</font>) following "
+  "the paper: depthwise 5x5 CSP blocks, channel attention, SiLU, SPPF, "
+  "RTMDet-tiny scaling.")
 story.append(PageBreak())
 
 # ---- Part B ----

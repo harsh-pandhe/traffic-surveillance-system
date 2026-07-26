@@ -30,11 +30,14 @@ HELMET = json.load(open("results/phase2/helmet_metrics.json"))
 NAVY, BLUE, RED, GREY = "#1b2a4a", "#2e86c1", "#c0392b", "#7fb3d5"
 
 
+ARMS = [k for k in ("cnn", "cspnext", "yolo") if WHEEL.get(k)]
+
+
 def fig_wheel_compare():
-    models = ["SmallCNN", "YOLOv8-cls"]
-    accs = [WHEEL["cnn"]["accuracy"], WHEEL["yolo"]["accuracy"]]
-    f1s = [WHEEL["cnn"]["f1"], WHEEL["yolo"]["f1"]]
-    x = np.arange(2); w = 0.35
+    models = [WHEEL[k]["model"] for k in ARMS]
+    accs = [WHEEL[k]["accuracy"] for k in ARMS]
+    f1s = [WHEEL[k]["f1"] for k in ARMS]
+    x = np.arange(len(ARMS)); w = 0.35
     fig, ax = plt.subplots(figsize=(6, 4))
     b1 = ax.bar(x - w/2, accs, w, label="Accuracy", color=NAVY)
     b2 = ax.bar(x + w/2, f1s, w, label="Macro-F1", color=BLUE)
@@ -42,20 +45,22 @@ def fig_wheel_compare():
         for b in bars:
             ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.01,
                     f"{b.get_height():.3f}", ha="center", fontsize=9, fontweight="bold")
-    ax.set_xticks(x); ax.set_xticklabels(models)
+    ax.set_xticks(x); ax.set_xticklabels(models, fontsize=9)
     ax.set_ylim(0, 1.0); ax.set_ylabel("Score")
-    ax.set_title("Wheel-Count: CNN vs YOLO"); ax.legend(); ax.grid(axis="y", alpha=0.3)
+    ax.set_title("Wheel-Count: CNN vs RTMDet(CSPNeXt) vs YOLO")
+    ax.legend(); ax.grid(axis="y", alpha=0.3)
     fig.tight_layout(); fig.savefig(f"{OUT}/wheel_compare.png", dpi=150); plt.close(fig)
 
 
 def fig_wheel_perclass():
     classes = WHEEL["cnn"]["classes"]
-    cnn = [WHEEL["cnn"]["report"][c]["f1-score"] for c in classes]
-    yolo = [WHEEL["yolo"]["report"][c]["f1-score"] for c in classes]
-    x = np.arange(len(classes)); w = 0.38
-    fig, ax = plt.subplots(figsize=(7, 4))
-    ax.bar(x - w/2, cnn, w, label="SmallCNN", color=GREY)
-    ax.bar(x + w/2, yolo, w, label="YOLOv8-cls", color=BLUE)
+    x = np.arange(len(classes)); w = 0.8 / len(ARMS)
+    palette = {"cnn": GREY, "cspnext": NAVY, "yolo": BLUE}
+    fig, ax = plt.subplots(figsize=(7.4, 4))
+    for i, k in enumerate(ARMS):
+        vals = [WHEEL[k]["report"][c]["f1-score"] for c in classes]
+        off = (i - (len(ARMS) - 1) / 2) * w
+        ax.bar(x + off, vals, w, label=WHEEL[k]["model"], color=palette[k])
     ax.set_xticks(x); ax.set_xticklabels(classes, fontsize=9)
     ax.set_ylim(0, 1.05); ax.set_ylabel("F1-score")
     ax.set_title("Per-Class F1 (wheel-count)"); ax.legend(); ax.grid(axis="y", alpha=0.3)

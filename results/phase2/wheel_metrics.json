@@ -1,11 +1,11 @@
 {
   "cnn": {
     "model": "SmallCNN",
-    "accuracy": 0.6390532544378699,
-    "precision": 0.6395467836257309,
-    "recall": 0.63740732447629,
-    "f1": 0.6268305179236049,
-    "latency_ms": 1.862611850074842,
+    "accuracy": 0.7514792899408284,
+    "precision": 0.7482654553410926,
+    "recall": 0.7527261531571876,
+    "f1": 0.7495989273808691,
+    "latency_ms": 1.7532934135336595,
     "classes": [
       "2wheeler",
       "3wheeler",
@@ -14,43 +14,102 @@
     ],
     "report": {
       "2wheeler": {
-        "precision": 0.75,
-        "recall": 0.7012987012987013,
-        "f1-score": 0.7248322147651006,
+        "precision": 0.7558139534883721,
+        "recall": 0.8441558441558441,
+        "f1-score": 0.7975460122699386,
         "support": 77.0
       },
       "3wheeler": {
-        "precision": 0.6240601503759399,
-        "recall": 0.9222222222222223,
-        "f1-score": 0.7443946188340808,
+        "precision": 0.8764044943820225,
+        "recall": 0.8666666666666667,
+        "f1-score": 0.8715083798882681,
         "support": 90.0
       },
       "4wheeler": {
-        "precision": 0.5555555555555556,
-        "recall": 0.40229885057471265,
-        "f1-score": 0.4666666666666667,
+        "precision": 0.65,
+        "recall": 0.5977011494252874,
+        "f1-score": 0.6227544910179641,
         "support": 87.0
       },
       "6plus_wheeler": {
-        "precision": 0.6285714285714286,
-        "recall": 0.5238095238095238,
-        "f1-score": 0.5714285714285714,
+        "precision": 0.7108433734939759,
+        "recall": 0.7023809523809523,
+        "f1-score": 0.7065868263473054,
         "support": 84.0
       },
-      "accuracy": 0.6390532544378699,
+      "accuracy": 0.7514792899408284,
       "macro avg": {
-        "precision": 0.6395467836257309,
-        "recall": 0.63740732447629,
-        "f1-score": 0.6268305179236049,
+        "precision": 0.7482654553410926,
+        "recall": 0.7527261531571876,
+        "f1-score": 0.7495989273808691,
         "support": 338.0
       },
       "weighted avg": {
-        "precision": 0.6362388960567099,
-        "recall": 0.6390532544378699,
-        "f1-score": 0.625466261041361,
+        "precision": 0.7495116043978718,
+        "recall": 0.7514792899408284,
+        "f1-score": 0.7496441753445738,
         "support": 338.0
       }
-    }
+    },
+    "params_m": 0.242052,
+    "epochs": 12,
+    "pretrained": "none (from scratch)"
+  },
+  "cspnext": {
+    "model": "RTMDet-CSPNeXt",
+    "accuracy": 0.6834319526627219,
+    "precision": 0.6876598981862141,
+    "recall": 0.6861894810170672,
+    "f1": 0.6826129086619481,
+    "latency_ms": 0.6052690227276954,
+    "classes": [
+      "2wheeler",
+      "3wheeler",
+      "4wheeler",
+      "6plus_wheeler"
+    ],
+    "report": {
+      "2wheeler": {
+        "precision": 0.6842105263157895,
+        "recall": 0.8441558441558441,
+        "f1-score": 0.7558139534883721,
+        "support": 77.0
+      },
+      "3wheeler": {
+        "precision": 0.9358974358974359,
+        "recall": 0.8111111111111111,
+        "f1-score": 0.8690476190476191,
+        "support": 90.0
+      },
+      "4wheeler": {
+        "precision": 0.581081081081081,
+        "recall": 0.4942528735632184,
+        "f1-score": 0.5341614906832298,
+        "support": 87.0
+      },
+      "6plus_wheeler": {
+        "precision": 0.5494505494505495,
+        "recall": 0.5952380952380952,
+        "f1-score": 0.5714285714285714,
+        "support": 84.0
+      },
+      "accuracy": 0.6834319526627219,
+      "macro avg": {
+        "precision": 0.6876598981862141,
+        "recall": 0.6861894810170672,
+        "f1-score": 0.6826129086619481,
+        "support": 338.0
+      },
+      "weighted avg": {
+        "precision": 0.6911919525591279,
+        "recall": 0.6834319526627219,
+        "f1-score": 0.6830887864566018,
+        "support": 338.0
+      }
+    },
+    "params_m": 2.35024,
+    "epochs": 40,
+    "pretrained": "none (from scratch)"
   },
   "yolo": {
     "model": "YOLOv8-cls",
@@ -58,7 +117,7 @@
     "precision": 0.8647187532274454,
     "recall": 0.8667574762402348,
     "f1": 0.8646052036249439,
-    "latency_ms": 3.159882943740062,
+    "latency_ms": 3.391533991020206,
     "classes": [
       "2wheeler",
       "3wheeler",
@@ -103,7 +162,9 @@
         "f1-score": 0.8649146210814793,
         "support": 338.0
       }
-    }
+    },
+    "epochs": 8,
+    "pretrained": "ImageNet"
   },
   "selected": "YOLOv8-cls"
 }
