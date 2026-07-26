@@ -1,0 +1,8 @@
+{
+  "frames": 300,
+  "fps_mean": 6.84,
+  "fps_final": 9.5,
+  "scene_on_demo": "DAY",
+  "source": "UA-DETRAC MVI_20032 (300 frames, 960x540)",
+  "note": "helmet model is motorcycle-domain; UA-DETRAC is car-only highway footage, so helmet detections here are not meaningful"
+}
