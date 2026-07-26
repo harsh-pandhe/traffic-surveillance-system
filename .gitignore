@@ -9,6 +9,7 @@ venv/
 weights/*.pt
 weights/*.pth
 weights/*.onnx
+weights/*.onnx.data
 weights/*.joblib
 !weights/.gitkeep
 

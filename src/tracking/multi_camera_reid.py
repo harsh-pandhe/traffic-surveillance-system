@@ -54,7 +54,14 @@ class VehicleReID:
     # ------------------------------------------------------------------ #
     def _init_backend(self):
         try:
-            from torchreid.utils import FeatureExtractor
+            # torchreid ships under two different layouts depending on how it
+            # was installed: the PyPI build nests everything under
+            # `torchreid.reid`, while the GitHub (deep-person-reid) build
+            # exposes `torchreid.utils` directly. Support both.
+            try:
+                from torchreid.reid.utils import FeatureExtractor
+            except ImportError:
+                from torchreid.utils import FeatureExtractor
             import os
             model_path = self._weights if os.path.isfile(self._weights) else ""
             extractor = FeatureExtractor(
