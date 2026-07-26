@@ -75,14 +75,36 @@ helmet_detector:
   conf_threshold: 0.35
   iou_threshold: 0.5
   imgsz: 640
+  # IMPORTANT: these ids/names MUST match the trained weights above.
+  # Taxonomy follows the AI City Challenge Track-5 convention
+  # (driver / passenger x helmet / no-helmet + the motorbike itself).
   class_names:
-    0: "No Helmet"
-    1: "Full-Face Helmet"
-    2: "Half-Face Helmet"
-    3: "Strap Unfastened"
-    4: "Helmet on Handlebar"
-    5: "Helmet on Arm"
-    6: "Rider"
+    0: "Driver With Helmet"
+    1: "Bike"
+    2: "Driver"
+    3: "Passenger With Helmet"
+    4: "Passenger"
+    5: "Driver Without Helmet"
+    6: "Passenger Without Helmet"
+  # Semantic roles are declared BY NAME (not by hard-coded id) so that
+  # retraining or reordering classes cannot silently invert compliance logic.
+  violation_classes:                    # count as helmet non-compliance
+    - "Driver Without Helmet"
+    - "Passenger Without Helmet"
+  face_exposed_classes:                 # face visible -> demographics can run
+    - "Driver Without Helmet"
+    - "Passenger Without Helmet"
+    - "Driver"
+    - "Passenger"
+  rider_classes:                        # people on the vehicle (occupancy count)
+    - "Driver With Helmet"
+    - "Driver"
+    - "Driver Without Helmet"
+    - "Passenger With Helmet"
+    - "Passenger"
+    - "Passenger Without Helmet"
+  vehicle_classes:
+    - "Bike"
 
 wheel_classifier:
   backend: "yolo"                       # "yolo" | "cnn"  (benchmark switch)
