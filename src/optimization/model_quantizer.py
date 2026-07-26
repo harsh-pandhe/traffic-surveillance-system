@@ -74,11 +74,15 @@ class ModelOptimizer:
         os.makedirs(os.path.dirname(out), exist_ok=True)
         model.eval()
         dummy = torch.randn(*input_shape)
+        # dynamo=False forces the legacy TorchScript exporter. torch>=2.5 defaults
+        # to the dynamo exporter, whose graphs break ONNX Runtime's quantizer
+        # with "Inferred shape and existing shape differ in dimension 0".
         torch.onnx.export(
             model, dummy, out,
             input_names=["input"], output_names=["output"],
             opset_version=self.onnx_opset,
             dynamic_axes={"input": {0: "batch"}, "output": {0: "batch"}},
+            dynamo=False,
         )
         print(f"[ModelOptimizer] exported ONNX -> {out}")
         return out
@@ -92,17 +96,35 @@ class ModelOptimizer:
         Returns (optimized_model, onnx_path_or_None).
         """
         model = self.prune_structured(model)
-        if self.do_quantize:
-            model = self.quantize_dynamic(model)
+
+        # Export BEFORE quantizing. torch.onnx.export cannot trace dynamically
+        # quantized modules (the packed-params objects have no __obj_flatten__),
+        # so the FP32 pruned graph is exported and INT8 is applied at the ONNX
+        # level by ONNX Runtime instead.
         onnx_path = None
         if export:
-            # Quantized models cannot always be traced; export the pruned FP32
-            # graph for ONNX Runtime, which can quantize separately if desired.
             try:
                 onnx_path = self.export_onnx(model, input_shape)
+                onnx_path = self.quantize_onnx(onnx_path) or onnx_path
             except Exception as exc:  # pragma: no cover - export robustness
                 print(f"[ModelOptimizer] ONNX export skipped ({exc}).")
+
+        if self.do_quantize:
+            model = self.quantize_dynamic(model)
         return model, onnx_path
+
+    # ------------------------------------------------------------------ #
+    def quantize_onnx(self, onnx_path: str) -> str | None:
+        """Apply INT8 dynamic quantization to an exported ONNX graph."""
+        try:
+            from onnxruntime.quantization import quantize_dynamic, QuantType
+        except Exception as exc:
+            print(f"[ModelOptimizer] ONNX quantization unavailable ({exc}).")
+            return None
+        out = onnx_path.replace(".onnx", "_int8.onnx")
+        quantize_dynamic(onnx_path, out, weight_type=QuantType.QInt8)
+        print(f"[ModelOptimizer] ONNX INT8 -> {out}")
+        return out
 
     # ------------------------------------------------------------------ #
     @staticmethod

@@ -158,7 +158,7 @@ optimization:
   quantize: true
   prune_amount: 0.30                    # 30% structured sparsity
   onnx_opset: 17
-  onnx_output: "weights/model_int8.onnx"
+  onnx_output: "weights/model.onnx"      # INT8 variant written as model_int8.onnx
 
 # --------------------------------------------------------------------------
 # Runtime
