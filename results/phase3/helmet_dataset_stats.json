@@ -1,0 +1,21 @@
+{
+  "clips": 910,
+  "annotations": 283377,
+  "tracks": 10006,
+  "rider_count_distribution": {
+    "1": 163435,
+    "2": 101906,
+    "3": 15854,
+    "4": 2094,
+    "5": 88
+  },
+  "annotations_with_violation": 111244,
+  "triple_riding": 18036,
+  "bare_headed_by_position": {
+    "D": 90342,
+    "P1": 55237,
+    "P2": 9906,
+    "P0": 6608,
+    "P3": 361
+  }
+}
