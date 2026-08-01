@@ -25,7 +25,19 @@ OUT = "outputs/report_p2"
 os.makedirs(OUT, exist_ok=True)
 
 WHEEL = json.load(open("results/phase2/wheel_metrics.json"))
+
+def _normalise_helmet(h):
+    """Accept both the old flat schema and the new {val,test} schema."""
+    if "test" in h and isinstance(h["test"], dict):
+        out = dict(h)
+        out.update(h["test"])          # headline = held-out test numbers
+        out["_split"] = "test"
+        return out
+    h = dict(h); h["_split"] = "val"
+    return h
+
 HELMET = json.load(open("results/phase2/helmet_metrics.json"))
+HELMET = _normalise_helmet(HELMET)
 
 NAVY, BLUE, RED, GREY = "#1b2a4a", "#2e86c1", "#c0392b", "#7fb3d5"
 

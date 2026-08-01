@@ -74,50 +74,116 @@ def crop_from_coco(images_dir, ann_json, out_root, val_split, seed):
     random.seed(seed)
     counts = defaultdict(lambda: {"train": 0, "val": 0})
     for cls, samples in samples_by_cls.items():
-        random.shuffle(samples)
-        samples = samples[:MAX_PER_CLASS]
-        n_val = int(len(samples) * val_split)
-        for i, (path, (x, y, w, h)) in enumerate(samples):
+        # Split by SOURCE IMAGE, not by crop.
+        #
+        # A single COCO photo often contains several vehicles of the same class
+        # (measured: 76% / 91% / 65% of 2-, 4- and 6+-wheeler crops come from
+        # such photos). Shuffling crops and slicing by index therefore put
+        # different vehicles from the *same* scene on both sides of the split --
+        # sharing background, lighting, camera and resolution -- which leaks and
+        # inflates validation accuracy. Grouping by image keeps every crop of a
+        # photo on one side.
+        by_image = defaultdict(list)
+        for path, box in samples:
+            by_image[path].append(box)
+
+        image_paths = sorted(by_image)          # sort first for determinism
+        random.shuffle(image_paths)
+        n_val_imgs = int(len(image_paths) * val_split)
+        split_of = {p: ("val" if i < n_val_imgs else "train")
+                    for i, p in enumerate(image_paths)}
+
+        emitted = 0
+        for i, path in enumerate(image_paths):
+            if emitted >= MAX_PER_CLASS:
+                break
             img = cv2.imread(path)
             if img is None:
                 continue
             H, W = img.shape[:2]
-            x1, y1 = max(0, int(x)), max(0, int(y))
-            x2, y2 = min(W, int(x + w)), min(H, int(y + h))
-            if x2 <= x1 or y2 <= y1:
-                continue
-            crop = img[y1:y2, x1:x2]
-            split = "val" if i < n_val else "train"
-            d = os.path.join(out_root, split, CLASS_DIR[cls])
-            os.makedirs(d, exist_ok=True)
-            cv2.imwrite(os.path.join(d, f"coco_{cls}_{i:05d}.jpg"), crop)
-            counts[cls][split] += 1
+            split = split_of[path]
+            stem = os.path.splitext(os.path.basename(path))[0]
+            for j, (x, y, w, h) in enumerate(by_image[path]):
+                if emitted >= MAX_PER_CLASS:
+                    break
+                x1, y1 = max(0, int(x)), max(0, int(y))
+                x2, y2 = min(W, int(x + w)), min(H, int(y + h))
+                if x2 <= x1 or y2 <= y1:
+                    continue
+                crop = img[y1:y2, x1:x2]
+                d = os.path.join(out_root, split, CLASS_DIR[cls])
+                os.makedirs(d, exist_ok=True)
+                # Filename carries the source image stem so leakage is auditable.
+                cv2.imwrite(os.path.join(d, f"coco_{cls}_{stem}_{j:02d}.jpg"), crop)
+                counts[cls][split] += 1
+                emitted += 1
     return counts
 
 
 def merge_extra_3wheeler(extra_dir, out_root, val_split, seed):
-    """Copy an auto-rickshaw folder into the 3-wheeler class (train/val)."""
+    """
+    Crop auto-rickshaws into the 3-wheeler class.
+
+    This must emit *crops*, not whole photos. The COCO arm produces tight
+    vehicle crops, so copying full scenes here would give the classifier a
+    trivial shortcut -- "full photo => 3-wheeler" -- rather than making it learn
+    vehicle appearance. (That shortcut is the likely explanation for the
+    implausibly high 3-wheeler F1 of 0.96 in the first benchmark run.)
+
+    The source is a YOLO-format dataset, so bounding boxes come from the
+    matching .txt label file. Splitting is by image, consistent with the COCO arm.
+    """
     if not extra_dir or not os.path.isdir(extra_dir):
         return {"train": 0, "val": 0}
-    imgs = []
+
+    # Pair each image with its YOLO label file.
+    pairs = []
     for dp, _dn, fn in os.walk(extra_dir):
         for f in fn:
-            if f.lower().endswith((".jpg", ".jpeg", ".png")):
-                imgs.append(os.path.join(dp, f))
+            if not f.lower().endswith((".jpg", ".jpeg", ".png")):
+                continue
+            img_path = os.path.join(dp, f)
+            lbl_path = os.path.join(
+                dp.replace(os.sep + "images", os.sep + "labels"),
+                os.path.splitext(f)[0] + ".txt")
+            if os.path.isfile(lbl_path):
+                pairs.append((img_path, lbl_path))
+
     random.seed(seed)
-    random.shuffle(imgs)
-    imgs = imgs[:MAX_PER_CLASS]
-    n_val = int(len(imgs) * val_split)
+    pairs.sort()
+    random.shuffle(pairs)
+    n_val_imgs = int(len(pairs) * val_split)
+
     c = {"train": 0, "val": 0}
-    for i, p in enumerate(imgs):
-        img = cv2.imread(p)
+    emitted = 0
+    for i, (img_path, lbl_path) in enumerate(pairs):
+        if emitted >= MAX_PER_CLASS:
+            break
+        img = cv2.imread(img_path)
         if img is None:
             continue
-        split = "val" if i < n_val else "train"
-        d = os.path.join(out_root, split, CLASS_DIR[1])
-        os.makedirs(d, exist_ok=True)
-        cv2.imwrite(os.path.join(d, f"auto_{i:05d}.jpg"), img)
-        c[split] += 1
+        H, W = img.shape[:2]
+        split = "val" if i < n_val_imgs else "train"
+        stem = os.path.splitext(os.path.basename(img_path))[0]
+        for j, line in enumerate(open(lbl_path).read().splitlines()):
+            if emitted >= MAX_PER_CLASS:
+                break
+            p = line.split()
+            if len(p) < 5:
+                continue
+            cx, cy, bw, bh = (float(v) for v in p[1:5])
+            x1, y1 = int((cx - bw / 2) * W), int((cy - bh / 2) * H)
+            x2, y2 = int((cx + bw / 2) * W), int((cy + bh / 2) * H)
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(W, x2), min(H, y2)
+            if x2 - x1 < MIN_BOX or y2 - y1 < MIN_BOX:
+                continue
+            d = os.path.join(out_root, split, CLASS_DIR[1])
+            os.makedirs(d, exist_ok=True)
+            cv2.imwrite(os.path.join(d, f"auto_{stem}_{j:02d}.jpg"),
+                        img[y1:y2, x1:x2])
+            c[split] += 1
+            emitted += 1
     return c
 
 
