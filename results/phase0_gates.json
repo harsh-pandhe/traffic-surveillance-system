@@ -1,0 +1,21 @@
+{
+  "gate_B_demographics": {
+    "question": "Do enough riders yield a face crop big enough for DeepFace?",
+    "face_exposed_detections": 158,
+    "usable_crops": 98,
+    "usable_pct": 62.0,
+    "face_min_side_px": {
+      "median": 38,
+      "p90": 57,
+      "max": 143
+    },
+    "configured_min_face_size": 32,
+    "verdict": "QUALIFIED PASS",
+    "reasoning": "62% coverage is workable, but the median face is only 38px while DeepFace/FairFace age estimation wants >=64px. Gender is more robust at low resolution than age. Proceed with the install, but report age estimates as indicative rather than reliable."
+  },
+  "gate_A_helmet_data": {
+    "status": "PENDING",
+    "question": "Is the helmet detector still data-limited at 368 images?",
+    "method": "learning curve at 25/50/75/100% of train split, test mAP each"
+  }
+}

@@ -25,12 +25,31 @@ Three architectures benchmarked under identical data and evaluation protocol:
 
 | Model | Accuracy | Macro-P | Macro-R | Macro-F1 | Latency (ms) | Params | Epochs | Pretrained |
 |---|---|---|---|---|---|---|---|---|
-| SmallCNN (custom baseline) | 0.751 | 0.752 | 0.750 | 0.750 | 1.8 | 0.24M | 12 | none |
-| RTMDet (CSPNeXt) | 0.683 | 0.688 | 0.686 | 0.683 | 0.6 | 2.35M | 40 | none |
-| **YOLOv8-cls (selected)** | **0.867** | 0.865 | 0.867 | 0.865 | 3.4 | — | 8 | ImageNet |
+| SmallCNN (custom baseline) | 0.787 | 0.756 | 0.753 | 0.753 | 1.1 | 0.24M | 12 | none |
+| RTMDet (CSPNeXt) | 0.695 | 0.638 | 0.645 | 0.639 | 1.0 | 2.35M | 12 | none |
+| **YOLOv8-cls (selected)** | **0.861** | 0.829 | 0.826 | 0.827 | 2.9 | — | 8 | ImageNet |
 
-Per-class F1 (YOLOv8-cls): 2-Wheeler 0.91, 3-Wheeler 0.96, 4-Wheeler 0.81,
-6+ Wheeler 0.78.
+> **These numbers supersede an earlier, invalid run.** The first benchmark
+> reported 0.751 / 0.683 / 0.867 on a split that leaked: `build_wheel_dataset.py`
+> shuffled *crops* and sliced by index, so several vehicles from the same COCO
+> photo landed on both sides of the split (measured: 76% / 91% / 65% of 2-, 4-
+> and 6+-wheeler crops came from such photos). Separately, the 3-wheeler class
+> was built from **whole photos** while every other class was a tight crop,
+> handing the model a possible shape shortcut. Both defects are fixed: the split
+> is now by source image and all classes are crops. Because both changed at once,
+> the difference between old and new numbers is **not** attributable to leakage
+> alone. The model ranking is unchanged, so the selection conclusion is robust.
+>
+> One hypothesis was **disproved** by the rerun: the 3-wheeler class was
+> suspected of scoring 0.96 F1 because of the whole-photo shortcut, but after
+> cropping it still scores 0.96 — auto-rickshaws are simply visually distinctive.
+> The classes that actually fell are 4-wheeler (0.81 → 0.70) and 6+ wheeler
+> (0.78 → 0.72), and 4-wheeler was the most leak-prone class at 91%. That is the
+> pattern leakage predicts.
+
+Per-class F1 (YOLOv8-cls, leak-free): 2-Wheeler 0.93, 3-Wheeler 0.96,
+4-Wheeler 0.70, 6+ Wheeler 0.72. Car-vs-bus/truck is now the hard pair, which is
+expected once same-scene crops no longer span the split.
 
 **Selected model: YOLOv8-cls.**
 
@@ -42,10 +61,11 @@ consequences:
 
 1. YOLOv8-cls's margin partly reflects transfer learning, not just architecture.
 2. CSPNeXt (2.35M params) is the largest model but has the least data per
-   parameter, so it underfits this dataset. At 12 epochs it scored only 0.562;
-   extending to 40 epochs (training loss 0.95 → 0.26, converged) lifted it to
-   0.683. It is the **fastest** model at inference (0.6 ms) despite being the
-   largest — CSPNeXt's depthwise 5×5 design is efficient on CPU.
+   parameter, so it underfits this dataset. It is nonetheless competitive on
+   **latency** (1.0 ms, essentially tied with the 10× smaller SmallCNN and ~3×
+   faster than YOLOv8-cls) — CSPNeXt's depthwise 5×5 design is efficient on CPU.
+   On the earlier dataset it was still improving with longer training (0.562 at
+   12 epochs → 0.683 at 40), so its reported figure is a floor, not a ceiling.
 
 Conclusion: for this dataset size, ImageNet-pretrained YOLOv8-cls is the right
 production choice; CSPNeXt would be expected to close the gap given either
@@ -70,23 +90,33 @@ Weights: `weights/wheel_cnn.pt`, `weights/wheel_cspnext.pt`,
 Dataset: 7-class rider/helmet detection (368 train / 65 val / 52 test), YOLO
 format. Fine-tuned YOLOv8n, 25 epochs, 416×416, CPU.
 
-**Validation:** mAP@50 = **0.731**, mAP@50-95 = 0.385, Precision = 0.741,
-Recall = 0.668.
+**Held-out test set (52 images, 321 instances) — the headline number:**
+mAP@50 = **0.764**, mAP@50-95 = 0.372, Precision = 0.732, Recall = 0.746.
 
-| Class | AP@50 |
+**Validation set (65 images):** mAP@50 = 0.731, mAP@50-95 = 0.385,
+Precision = 0.741, Recall = 0.668.
+
+The validation split was used to select the best epoch, so it is optimistically
+biased; the test split was never touched until final evaluation. Test scoring
+slightly *higher* than validation is small-split variance, not a better model —
+both splits are small, so each carries a wide confidence interval. They
+corroborate each other at roughly 0.73–0.76.
+
+| Class | AP@50 (test) |
 |---|---|
-| bike | 0.863 |
-| driver | 0.841 |
-| passenger | 0.812 |
-| driver_with_helmet | 0.784 |
-| driver_without_helmet | 0.680 |
-| passenger_without_helmet | 0.577 |
-| passenger_with_helmet | 0.560 |
+| driver | 0.935 |
+| bike | 0.881 |
+| passenger | 0.821 |
+| driver_without_helmet | 0.808 |
+| driver_with_helmet | 0.795 |
+| passenger_without_helmet | 0.565 |
+| passenger_with_helmet | 0.545 |
+
+The passenger-helmet classes are weakest on **both** splits, so this is a real
+data limitation (few passenger instances, small objects) rather than a split
+artifact — tracked as issue #8.
 
 Weights: `weights/helmet_yolov8.pt` (auto-loaded by `helmet_detector.py`).
-
-Passenger-helmet classes are weakest — fewest instances (passenger_with_helmet
-n=65) and small objects. More passenger-side data would lift these.
 
 ## Reproduce
 

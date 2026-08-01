@@ -25,7 +25,19 @@ A = "outputs/report_p2"
 OUT_PDF = "docs/Phase2_Report.pdf"
 REPO = "https://github.com/harsh-pandhe/traffic-surveillance-system"
 W = json.load(open("results/phase2/wheel_metrics.json"))
+
+def _normalise_helmet(h):
+    """Accept both the old flat schema and the new {val,test} schema."""
+    if "test" in h and isinstance(h["test"], dict):
+        out = dict(h)
+        out.update(h["test"])          # headline = held-out test numbers
+        out["_split"] = "test"
+        return out
+    h = dict(h); h["_split"] = "val"
+    return h
+
 H = json.load(open("results/phase2/helmet_metrics.json"))
+H = _normalise_helmet(H)
 
 NAVY = colors.HexColor("#1b2a4a"); BLUE = colors.HexColor("#2e86c1")
 LIGHT = colors.HexColor("#eaf2f8"); GREY = colors.HexColor("#5d6d7e")
@@ -79,15 +91,23 @@ meta = [["Milestone", "Phase 2 of 4 (Days 6–12): Model Training &amp; Helmet C
         ["Helmet model", f"YOLOv8n — mAP@50 {H['mAP50']:.3f} (7 classes)"]]
 table([[Paragraph(f"<b>{k}</b>", BODY), Paragraph(v, BODY)] for k, v in meta], [3.2*cm, 12.3*cm], header=False)
 sp(8)
-p("<b>Executive summary.</b> Phase 2 delivers trained models on real data. For "
-  "wheel-count classification, three architectures are benchmarked under an "
-  "identical protocol across four classes (2/3/4/6+ wheelers): a custom SmallCNN "
-  "baseline (0.751), RTMDet's CSPNeXt backbone (0.683), and YOLOv8-cls (0.867, "
-  "selected). For helmet compliance, a YOLOv8n detector is fine-tuned on a "
-  "7-class rider/helmet dataset, reaching mAP@50 0.731. All metrics are "
-  "recomputed from the datasets and persisted in results/phase2/; the "
-  "pretraining asymmetry between the arms is stated explicitly rather than "
-  "glossed over.")
+p(f"<b>Executive summary.</b> Phase 2 delivers trained models on real data. For "
+  f"wheel-count classification, three architectures are benchmarked under an "
+  f"identical, <b>leak-free</b> protocol across four classes (2/3/4/6+ wheelers): "
+  f"a custom SmallCNN baseline ({W['cnn']['accuracy']:.3f}), RTMDet's CSPNeXt "
+  f"backbone ({W['cspnext']['accuracy']:.3f}), and YOLOv8-cls "
+  f"({W['yolo']['accuracy']:.3f}, selected). For helmet compliance, a YOLOv8n "
+  f"detector reaches mAP@50 {H['mAP50']:.3f} on a <b>held-out test split</b> "
+  f"never used for model selection. All metrics are recomputed from the datasets "
+  f"and persisted in results/phase2/; the pretraining asymmetry between the arms "
+  f"is stated explicitly rather than glossed over.")
+p("<b>Correction notice.</b> An earlier version of this report gave 0.751 / "
+  "0.683 / 0.867 for the three architectures. That run split the dataset by "
+  "<i>crop</i> rather than by source image, so several vehicles from the same "
+  "photo appeared on both sides of the split (76% / 91% / 65% of 2-, 4- and "
+  "6+-wheeler crops came from such photos), and the 3-wheeler class used whole "
+  "photos while every other class used tight crops. Both defects are fixed and "
+  "the numbers above are the corrected ones. The model ranking is unchanged.")
 story.append(PageBreak())
 
 # ---- Part A ----
@@ -107,17 +127,20 @@ for k in _arms:
                   f"{m['latency_ms']:.1f}", pm, pre])
 table(_rows, [3.5*cm,1.7*cm,1.9*cm,1.9*cm,2.0*cm,1.7*cm,1.5*cm,1.8*cm], font=7.5)
 img("wheel_compare.png", 11.5*cm, "Figure 1. Accuracy and macro-F1 across the three architectures.")
-img("wheel_perclass.png", 13*cm, "Figure 2. Per-class F1. YOLO leads every class; 3-Wheeler is the strongest (F1 0.96).")
+img("wheel_perclass.png", 13*cm, "Figure 2. Per-class F1 on the leak-free split. "
+    "3-Wheeler remains strongest (0.96) even after cropping; car vs bus/truck is now the hard pair.")
 img("wheel_composition.png", 10.5*cm, "Figure 3. Balanced 4-class wheel dataset.")
 p("Methodological note", "H2c")
-p("This comparison is <b>not pretraining-neutral</b>. YOLOv8-cls starts from "
-  "ImageNet weights; SmallCNN and CSPNeXt train from scratch on ~1,350 crops, so "
-  "part of YOLO's margin is transfer learning rather than architecture. CSPNeXt "
-  "(2.35M params) has the least data per parameter and underfits: it scored 0.562 "
-  "at 12 epochs and 0.683 at 40 epochs (training loss 0.95 to 0.26, converged). "
-  "Notably it is the <b>fastest at inference</b> (0.6 ms) despite being the "
-  "largest — the depthwise 5x5 CSP design is CPU-efficient. For this dataset "
-  "size the pretrained YOLOv8-cls is the correct production choice.")
+p(f"This comparison is <b>not pretraining-neutral</b>. YOLOv8-cls starts from "
+  f"ImageNet weights; SmallCNN and CSPNeXt train from scratch, so part of YOLO's "
+  f"margin is transfer learning rather than architecture. CSPNeXt (2.35M params) "
+  f"has the least data per parameter and underfits at this dataset size, yet it "
+  f"is the <b>fastest at inference</b> ({W['cspnext']['latency_ms']:.1f} ms — "
+  f"essentially tied with the 10x smaller SmallCNN and ~3x faster than "
+  f"YOLOv8-cls), because the depthwise 5x5 CSP design is CPU-efficient. On the "
+  f"earlier dataset it was still improving with longer training (0.562 at 12 "
+  f"epochs to 0.683 at 40), so its figure here is a floor, not a ceiling. For "
+  f"this dataset size the pretrained YOLOv8-cls is the correct production choice.")
 p("RTMDet implementation", "H2c")
 p("mmdetection/mmcv (RTMDet's official home) will not install here: openmim "
   "fails on Python 3.12 (<font face='Courier' size=8>pkgutil.ImpImporter</font> "
@@ -132,7 +155,11 @@ story.append(PageBreak())
 p("2. Granular Helmet Compliance — YOLOv8n", "H1c"); hr()
 p("7-class rider/helmet detection (driver/passenger × helmet/no-helmet + bike), "
   "368 train / 65 val / 52 test, YOLO format. Fine-tuned YOLOv8n, 25 epochs, "
-  "416×416, CPU.")
+  "416×416, CPU. The figures below are on the <b>held-out test split</b>; the "
+  "validation split was used for epoch selection and is therefore optimistically "
+  "biased. Both splits are small, so both carry wide confidence intervals — they "
+  "corroborate each other at roughly 0.73-0.76 rather than one superseding the "
+  "other.")
 table([["Metric","Value"],
        ["mAP@50", f"{H['mAP50']:.3f}"],["mAP@50-95", f"{H['mAP50_95']:.3f}"],
        ["Precision", f"{H['precision']:.3f}"],["Recall", f"{H['recall']:.3f}"]],
