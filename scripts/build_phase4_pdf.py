@@ -160,19 +160,41 @@ img("retention_summary.png", 13.5 * cm,
    "Figure 4. Accuracy retention across every optimized configuration, "
    "relative to its own FP32 baseline.")
 
-p("4. Reproduce", "H1c"); hr()
-table([["Command", "Purpose"],
-       ["python scripts/run_phase4_benchmark.py --ft-epochs 3", "Full benchmark matrix"]],
-      [10 * cm, 5 * cm], font=8)
+import json as _json
+HONNX = _json.load(open("results/phase4/helmet_onnx.json"))
+p("4. Helmet Detector ONNX Export", "H1c"); hr()
+p("The wheel-count benchmark above covers the classification arms; the "
+  "production <b>helmet detector</b> — a YOLOv8 detection model, not a "
+  "classifier — is exported and validated separately.")
+table([["Variant", "mAP@50 (test)", "Retention", "Size"],
+       ["PyTorch FP32", f"{HONNX['pytorch_fp32']['mAP50']:.3f}", "1.00", f"{HONNX['pytorch_size_mb']} MB"],
+       ["ONNX FP32", f"{HONNX['onnx_fp32']['mAP50']:.3f}", f"{HONNX['onnx_fp32']['retention']:.2f}", f"{HONNX['onnx_fp32']['size_mb']} MB"],
+       ["ONNX INT8", f"{HONNX['onnx_int8']['mAP50']:.3f}", f"{HONNX['onnx_int8']['retention']:.2f}", f"{HONNX['onnx_int8']['size_mb']} MB"]],
+      [4 * cm, 3.5 * cm, 2.8 * cm, 3 * cm])
+p("<b>A real export bug, found and fixed.</b> The first export used "
+  "<font face='Courier' size=8>dynamic=True</font> (variable input size). "
+  "Per-image detection counts matched PyTorch exactly on a 10-image spot "
+  "check — but the aggregate mAP@50, which sweeps confidence thresholds, "
+  "revealed an <b>11% relative drop (0.764 → 0.677)</b> the spot check had "
+  "missed entirely. A spot check alone is not sufficient evidence an export "
+  "is correct. Switching to a static export "
+  "(<font face='Courier' size=8>dynamic=False</font>) resolved it — both "
+  "ONNX variants above retain ~99% of the PyTorch baseline.")
 
-p("5. Deliverable Checklist", "H1c"); hr()
+p("5. Reproduce", "H1c"); hr()
+table([["Command", "Purpose"],
+       ["python scripts/run_phase4_benchmark.py --ft-epochs 3", "Wheel-count benchmark matrix"],
+       ["yolo export model=weights/helmet_yolov8.pt format=onnx dynamic=False", "Helmet detector ONNX export"]],
+      [10.5 * cm, 4.5 * cm], font=7.6)
+
+p("6. Deliverable Checklist", "H1c"); hr()
 table([["Deliverable", "Status"],
        ["30% structured pruning implemented + benchmarked", "Complete"],
        ["INT8 quantization (PyTorch dynamic + ONNX Runtime)", "Complete"],
-       ["ONNX export for the real trained models", "Complete"],
+       ["ONNX export for every trained model (wheel + helmet)", "Complete"],
        ["Before/after accuracy, latency, FPS, size", "Complete"],
        ["Reported as retention, not just speedup", "Complete"],
-       ["Real failure mode found, explained, and fixed", "Complete"]],
+       ["Real failure modes found, explained, and fixed", "Complete"]],
       [11 * cm, 4 * cm])
 
 os.makedirs("docs", exist_ok=True)

@@ -570,6 +570,26 @@ table([["Model", "Config", "Acc.", "Retention", "Latency (ms)", "Size (MB)"],
        ["YOLOv8-cls", "FP32", f"{yolo_fp32['accuracy']:.3f}", "1.00", f"{yolo_fp32['latency_ms']:.2f}", f"{yolo_fp32['size_mb']:.2f}"],
        ["YOLOv8-cls", "ONNX FP32", f"{yolo_onnx['accuracy']:.3f}", f"{yolo_onnx['accuracy_retention']:.2f}", f"{yolo_onnx['latency_ms']:.2f}", f"{yolo_onnx['size_mb']:.2f}"]],
       [3 * cm, 2.6 * cm, 1.7 * cm, 2 * cm, 2.6 * cm, 2 * cm], font=7.8)
+
+p("7.4 Helmet Detector ONNX Export", "H2c")
+HONNX = json.load(open("results/phase4/helmet_onnx.json"))
+p(f"""The wheel-count benchmark above covers the classification arms; the
+production <b>helmet detector</b> — a YOLOv8 detection model, not a
+classifier — is exported and validated separately. PyTorch FP32 reaches
+{HONNX['pytorch_fp32']['mAP50']:.3f} mAP@50; ONNX FP32 and INT8 retain
+{HONNX['onnx_fp32']['retention']*100:.0f}% and
+{HONNX['onnx_int8']['retention']*100:.0f}% of that respectively, with INT8
+at {HONNX['onnx_int8']['size_mb']} MB — a further compression over the
+{HONNX['onnx_fp32']['size_mb']} MB FP32 ONNX graph.""")
+p(f"""<b>A real export bug was found here too.</b> The first export used a
+dynamic input shape; a 10-image spot check showed per-image detection counts
+matching PyTorch exactly, which looked like success. The aggregate mAP@50,
+which sweeps confidence thresholds rather than checking one operating point,
+revealed an 11% relative drop (0.764 to 0.677) the spot check had missed
+entirely. A static-shape export resolved it. This is recorded as a general
+lesson for this project: a spot check that agrees on individual outputs is
+not sufficient evidence that an export preserves the model's calibration
+across its full confidence range.""")
 pagebreak()
 
 # ============================================================ 8. DISCUSSION
