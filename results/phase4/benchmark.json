@@ -1,0 +1,155 @@
+{
+  "n_eval_images": 200,
+  "classes": [
+    "2wheeler",
+    "3wheeler",
+    "4wheeler",
+    "6plus_wheeler"
+  ],
+  "rows": [
+    {
+      "model": "SmallCNN",
+      "config": "fp32",
+      "accuracy": 0.86,
+      "latency_ms": 0.9009602550941054,
+      "fps": 1109.9268745162904,
+      "size_mb": 0.9356851577758789,
+      "ram_mb": 702.6328125,
+      "cpu_percent": 20.0,
+      "note": "",
+      "accuracy_retention": 1.0
+    },
+    {
+      "model": "SmallCNN",
+      "config": "pruned_naive",
+      "accuracy": 0.27,
+      "latency_ms": 0.9104408746497938,
+      "fps": 1098.3689637008615,
+      "size_mb": 0.9360971450805664,
+      "ram_mb": 704.921875,
+      "cpu_percent": 20.0,
+      "note": "no fine-tune after pruning -- diagnostic, not deployable",
+      "accuracy_retention": 0.313953488372093
+    },
+    {
+      "model": "SmallCNN",
+      "config": "pruned",
+      "accuracy": 0.84,
+      "latency_ms": 0.9756998146622209,
+      "fps": 1024.905390953868,
+      "size_mb": 0.9358911514282227,
+      "ram_mb": 865.68359375,
+      "cpu_percent": 30.0,
+      "note": "pruned + 3-epoch fine-tune recovery",
+      "accuracy_retention": 0.9767441860465116
+    },
+    {
+      "model": "SmallCNN",
+      "config": "int8",
+      "accuracy": 0.84,
+      "latency_ms": 1.0436433948052581,
+      "fps": 958.1816978649092,
+      "size_mb": 0.9352178573608398,
+      "ram_mb": 868.0078125,
+      "cpu_percent": 20.0,
+      "note": "",
+      "accuracy_retention": 0.9767441860465116
+    },
+    {
+      "model": "SmallCNN",
+      "config": "onnx_int8",
+      "accuracy": 0.84,
+      "latency_ms": 2.0794132899754914,
+      "fps": 480.90488063187587,
+      "size_mb": 0.24119091033935547,
+      "ram_mb": 895.76171875,
+      "cpu_percent": 0.0,
+      "note": "",
+      "accuracy_retention": 0.9767441860465116
+    },
+    {
+      "model": "RTMDet-CSPNeXt",
+      "config": "fp32",
+      "accuracy": 0.785,
+      "latency_ms": 3.1200976650143275,
+      "fps": 320.50278784956174,
+      "size_mb": 9.066500663757324,
+      "ram_mb": 897.5234375,
+      "cpu_percent": 20.0,
+      "note": "",
+      "accuracy_retention": 1.0
+    },
+    {
+      "model": "RTMDet-CSPNeXt",
+      "config": "pruned_naive",
+      "accuracy": 0.465,
+      "latency_ms": 3.207303490708,
+      "fps": 311.78839261614553,
+      "size_mb": 9.069907188415527,
+      "ram_mb": 897.97265625,
+      "cpu_percent": 30.0,
+      "note": "no fine-tune after pruning -- diagnostic, not deployable",
+      "accuracy_retention": 0.5923566878980892
+    },
+    {
+      "model": "RTMDet-CSPNeXt",
+      "config": "pruned",
+      "accuracy": 0.82,
+      "latency_ms": 3.085770119942026,
+      "fps": 324.0682102459361,
+      "size_mb": 9.068133354187012,
+      "ram_mb": 1052.09375,
+      "cpu_percent": 20.0,
+      "note": "pruned + 3-epoch fine-tune recovery",
+      "accuracy_retention": 1.0445859872611465
+    },
+    {
+      "model": "RTMDet-CSPNeXt",
+      "config": "int8",
+      "accuracy": 0.82,
+      "latency_ms": 3.1335393757763086,
+      "fps": 319.1279508821421,
+      "size_mb": 9.064143180847168,
+      "ram_mb": 1052.70703125,
+      "cpu_percent": 20.0,
+      "note": "",
+      "accuracy_retention": 1.0445859872611465
+    },
+    {
+      "model": "RTMDet-CSPNeXt",
+      "config": "onnx_int8",
+      "accuracy": 0.82,
+      "latency_ms": 3.661469524813583,
+      "fps": 273.1143856921527,
+      "size_mb": 2.3720788955688477,
+      "ram_mb": 1053.40234375,
+      "cpu_percent": 0.0,
+      "note": "",
+      "accuracy_retention": 1.0445859872611465
+    },
+    {
+      "model": "YOLOv8-cls",
+      "config": "fp32",
+      "accuracy": 0.96,
+      "latency_ms": 2.29469676494773,
+      "fps": 435.7874274611524,
+      "size_mb": 2.8310012817382812,
+      "ram_mb": 1091.0234375,
+      "cpu_percent": 30.0,
+      "accuracy_retention": 1.0,
+      "note": "ultralytics"
+    },
+    {
+      "model": "YOLOv8-cls",
+      "config": "onnx_fp32",
+      "accuracy": 0.98,
+      "latency_ms": 0.49142559997562785,
+      "fps": 2034.8960250536293,
+      "size_mb": 5.521361351013184,
+      "ram_mb": 1095.09375,
+      "cpu_percent": 279.8,
+      "accuracy_retention": 1.0208333333333333,
+      "note": "ultralytics export"
+    }
+  ]
+}

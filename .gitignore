@@ -31,3 +31,6 @@ outputs/
 runs/
 data/wheels/
 data/helmet/
+
+# Phase 4 benchmark artifacts (regenerable intermediate weights)
+results/phase4/artifacts/

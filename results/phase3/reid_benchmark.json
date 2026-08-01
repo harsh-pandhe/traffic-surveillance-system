@@ -1,0 +1,11 @@
+{
+  "backend": "osnet",
+  "n_query_evaluated": 200,
+  "n_gallery": 3000,
+  "rank1": 0.31,
+  "rank5": 0.51,
+  "rank10": 0.615,
+  "mAP": 0.0950618084833938,
+  "embed_time_s": 27.819045194002683,
+  "embed_ms_per_image": 8.693451623125839
+}

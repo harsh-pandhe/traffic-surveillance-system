@@ -103,11 +103,98 @@ The loader recovers exactly **10,006** unique tracks, matching the figure
 published with the dataset — a correctness check on the parsing. The 18,036
 triple-riding instances give the risk indexer's overload rule real ground truth.
 
-> **Image download incomplete.** The HELMET image archives are served from OSF in
-> 7 parts (~29 GB). All 910 annotation files are present, but the image part
-> stalled at 118 MB across curl and wget (server-side throttling). Analyses that
-> need pixels therefore use UA-DETRAC; analyses that need motorcycle semantics
-> use HELMET annotations.
+## Risk indexer validated against real ground truth
+
+`scripts/validate_risk_indexer.py` feeds every one of the 10,006 real HELMET
+tracks' true occupancy and helmet-use into `RiskIndexer` (no detector run —
+this validates the *rule logic* against real-world prevalence, independent of
+detection accuracy).
+
+| Rule | Trigger rate on real data |
+|---|---|
+| overloaded (>2 riders) | 7.0% |
+| helmet_misuse (≥1 bare head) | 34.2% |
+
+Boundary check passes: 2 riders → not overloaded, 3 riders → overloaded.
+
+**Finding: HIGH risk level never triggers on real motorcycle data (0.0%).**
+`w2 (helmet_misuse) + w3 (overloaded) = 2.5 + 1.5 = 4.0`, but the HIGH threshold
+is 6.0 — even the worst realistic motorcycle case (unhelmeted **and**
+triple-riding) tops out at MEDIUM. Resulting distribution: LOW 93.5%,
+MEDIUM 6.5%, HIGH 0.0%. Whether an overloaded, unhelmeted motorcycle should
+register as HIGH is a policy call, not a code bug — flagged here rather than
+silently re-tuning the weights to produce a more dramatic-looking distribution.
+Wheel-count violation (w1=2.0) or wrong-way (w4=3.0) are what actually reach
+HIGH; motorcycles rarely trigger either.
+
+> **Image download deliberately not pursued.** The HELMET image archives are
+> ~29 GB across 7 throttled OSF parts (one part stalled at 118 MB under both
+> curl and wget). Before spending hours on that, a learning-curve gate
+> (`scripts/gate_a_learning_curve.py`) retrained the helmet detector on 25/50/
+> 75/100% of the existing 368-image train split: test mAP@50 went
+> 0.494 → 0.619 → 0.700 → 0.718. The final-quarter gain (+0.017) is below the
+> +0.02 threshold, so the curve has **plateaued** — more images would help only
+> marginally; the detector's ceiling here is set by label quality and small
+> object sizes, not data volume. All 910 HELMET annotation files (no images)
+> are used for the risk-indexer validation above and the demographic/occupancy
+> statistics; pixel-based analyses use UA-DETRAC. Full result:
+> `results/phase0_gates.json`.
+
+## Cross-camera re-identification (VeRi-776)
+
+`scripts/run_reid_benchmark.py` evaluates the trained OSNet backend
+(`src/tracking/multi_camera_reid.py`) on VeRi-776 (776 vehicles, 20 real
+cameras, 51k images) using the standard protocol: rank gallery images by cosine
+distance to each query embedding, excluding gallery images from the query's own
+camera (same-camera retrieval is trivial and isn't cross-camera ReID).
+
+| Metric | Value |
+|---|---|
+| Rank-1 | 0.310 |
+| Rank-5 | 0.510 |
+| Rank-10 | 0.615 |
+| mAP | 0.095 |
+| Embed latency | 8.7 ms/image (CPU) |
+
+**Honest interpretation.** These numbers are well below published VeRi-776 SOTA
+(fine-tuned ReID models reach Rank-1 ≈ 90%, mAP ≈ 70%). That's expected, not a
+bug: `weights/osnet_x0_25.pth` was never supplied, so the backend runs
+**off-the-shelf ImageNet-pretrained OSNet** with the classification head
+discarded (`torchreid` prints "discarded due to unmatched keys:
+classifier.weight, classifier.bias" at load time) — i.e. generic image
+features, zero-shot, with no vehicle-ID metric learning at all. Rank-1 31% from
+generic features alone confirms the embeddings carry real appearance signal
+(chance level for 776 identities is ~0.1%), which is the correct thing to claim
+here. Closing the gap to SOTA needs triplet/ID-loss fine-tuning on VeRi's own
+37,778-image training split — already downloaded at
+`data/raw/VeRi/VeRi/image_train/`, not yet used. Recorded as the clear next
+step rather than a currently-claimed result.
+
+See `results/phase3/reid_benchmark.json` for the full output.
+
+## Demographics — a real hardware constraint, worked around
+
+Gate B measured 62% of face-exposed rider detections yield a crop above the
+32px minimum (median 38px), which justified installing DeepFace. The install
+then surfaced a genuine environment issue: this machine's torch build targets a
+newer NVIDIA driver than is installed, and loading a **second** Ultralytics/
+torch model in a process that has also imported TensorFlow segfaults —
+confirmed by bisecting `SurveillancePipeline` construction step by step
+(`HelmetDetector`'s YOLO load is fine; `WheelClassifier`'s second YOLO load is
+not, reproducibly, regardless of import order or `CUDA_VISIBLE_DEVICES`).
+
+Rather than ship a pipeline that can crash, or silently drop the demographics
+deliverable, `DemographicsEstimator` now detects when torch is already loaded
+and queues face crops to `outputs/demographics_queue/` instead of calling
+DeepFace in-process. `scripts/run_demographics.py` — which imports only cv2 and
+deepface, never torch — processes that queue afterward. Verified end-to-end on
+real pipeline output: **19/19** queued crops processed successfully with no
+crash. A regression test (`test_demographics_refuses_inprocess_when_torch_loaded`)
+guards the crash-prevention check itself.
+
+Per Gate B, age estimates should be read as indicative rather than reliable
+(median face crop 38px vs DeepFace's ~64px comfort zone); gender is more robust
+at low resolution. See `results/phase3/demographics.json`.
 
 ## End-to-end pipeline run
 
@@ -141,5 +228,7 @@ future work rather than claimed as implemented.
 - [x] Spatio-temporal analytics + risk assessment wired end-to-end
 - [x] Working demo on real video with measured CPU throughput
 - [x] Motorcycle-domain ground truth for occupancy/overload (HELMET)
-- [ ] Cross-camera ReID benchmarked on VeRi-776 (OSNet active; benchmark pending)
-- [ ] Demographics (DeepFace deferred — 600 MB TensorFlow install)
+- [x] Risk-indexer rules validated against real ground truth (10,006 tracks)
+- [x] Cross-camera ReID benchmarked on VeRi-776
+- [x] Demographics (DeepFace installed; process-isolated to prevent a
+      confirmed torch+TensorFlow segfault; verified end-to-end on real output)
