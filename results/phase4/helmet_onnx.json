@@ -1,0 +1,19 @@
+{
+  "model": "helmet_yolov8n",
+  "pytorch_fp32": {
+    "mAP50": 0.7643,
+    "source": "results/phase2/helmet_metrics.json (test split)"
+  },
+  "onnx_fp32": {
+    "mAP50": 0.7577,
+    "retention": 0.991,
+    "size_mb": 11.61
+  },
+  "onnx_int8": {
+    "mAP50": 0.7562,
+    "retention": 0.989,
+    "size_mb": 3.11
+  },
+  "pytorch_size_mb": 5.92,
+  "note": "Static export (dynamic=False) required. An initial dynamic=True export silently dropped mAP50 to 0.677 (an 11% relative loss) despite per-image detection counts matching on a 10-image spot check -- the aggregate mAP swept across confidence thresholds exposed a real degradation the spot check missed. Static export resolves it: both ONNX variants retain ~99% of PyTorch accuracy."
+}

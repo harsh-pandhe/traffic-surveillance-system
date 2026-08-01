@@ -64,7 +64,7 @@ DAWN, ExDark, COCO (Phase 1), a 7-class helmet set + auto-rickshaw crops
 
 Trained weights load from `weights/` (paths in `config/settings.yaml`):
 
-- `helmet_yolov8.pt` — 7-class helmet compliance detector (mAP@50 0.764)
+- `helmet_yolov8.pt` — 7-class helmet compliance detector (mAP@50 0.764; ONNX FP32/INT8 export retains 99%, see `docs/PHASE4.md`)
 - `wheel_yolov8_cls.pt` / `wheel_cnn.pt` / `wheel_cspnext.pt` — wheel-count models
 - `scene_classifier.joblib` — learned scene classifier
 - `osnet_x0_25.pth` — OSNet ReID backbone (off-the-shelf; not fine-tuned — see [issue #14](https://github.com/harsh-pandhe/traffic-surveillance-system/issues/14))

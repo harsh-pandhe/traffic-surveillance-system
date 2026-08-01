@@ -79,6 +79,33 @@ with more training on this dataset size).
   ONNX artifacts here — relevant for deployment footprint, not necessarily
   real-time throughput on this hardware.
 
+## Helmet Detector ONNX Export
+
+The wheel-count benchmark above covers the classification arms; the
+production **helmet detector** (the headline model) is exported separately
+since it is a YOLOv8 detection model, not a classifier.
+
+| Variant | mAP@50 (test) | Retention | Size |
+|---|---|---|---|
+| PyTorch FP32 | 0.764 | 1.00 | 5.9 MB |
+| ONNX FP32 | 0.758 | 0.99 | 11.6 MB |
+| ONNX INT8 | 0.756 | 0.99 | **3.1 MB** |
+
+### A real export bug, found and fixed
+
+The first export used `dynamic=True` (variable input batch/size). Per-image
+detection counts matched PyTorch exactly on a 10-image spot check — but the
+aggregate mAP@50, which sweeps confidence thresholds, revealed a **0.764 → 0.677
+drop (11% relative)** that the spot check missed entirely. This is why a spot
+check is not sufficient evidence for an export's correctness: it can look
+identical while the confidence calibration underneath has shifted. Switching
+to a static export (`dynamic=False`) resolved it — both ONNX variants now
+retain ~99% of the PyTorch baseline, with INT8 giving 3.75× compression over
+the FP32 ONNX graph at effectively no further accuracy cost.
+
+Weights: `weights/helmet_yolov8.onnx`, `weights/helmet_yolov8_int8.onnx`.
+Metrics: `results/phase4/helmet_onnx.json`.
+
 ## Reproduce
 
 ```bash
