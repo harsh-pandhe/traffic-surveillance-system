@@ -121,8 +121,7 @@ story.append(Paragraph(
     "Adaptive Spatio-Temporal Traffic Surveillance for Granular "
     "Helmet-Compliance and Multi-Frame Vehicle Classification on "
     "Commodity CPUs", styles["PaperTitle"]))
-story.append(Paragraph("Harsh Pandhe", styles["Authors"]))
-story.append(Paragraph("Independent Research", styles["Affil"]))
+sp(10)
 
 story.append(Paragraph("Abstract", styles["AbstractHead"]))
 story.append(Paragraph(f"""We present an end-to-end, CPU-only traffic
@@ -426,7 +425,7 @@ col2 = Frame(MARGIN + COL_W + GUTTER, MARGIN, COL_W, COL_H, id="col2")
 os.makedirs("docs/paper", exist_ok=True)
 doc = BaseDocTemplate(OUT_PDF, pagesize=A4,
                       title="Adaptive Spatio-Temporal Traffic Surveillance",
-                      author="Harsh Pandhe")
+                      author="")
 doc.addPageTemplates([
     PageTemplate(id="onecol", frames=[full_frame], onPage=_footer),
     PageTemplate(id="twocol", frames=[col1, col2], onPage=_footer),
