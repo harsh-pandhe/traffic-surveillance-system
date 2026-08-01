@@ -42,7 +42,7 @@ print('reid   :', VehicleReID()._backend)      # want: osnet     (not: histogram
 ```
 
 If you see `iou` or `histogram`, a dependency is missing or broken — see
-§7 Troubleshooting.
+§8 Troubleshooting.
 
 ## 3. Datasets
 
@@ -90,8 +90,13 @@ python scripts/train_helmet_detector.py \
     --data data/raw/helmet_raw/data.yaml --epochs 25 --imgsz 416 --batch 8
 ```
 
-Expected: YOLOv8-cls selected at ≈ **0.867** accuracy; helmet
-**mAP@50 ≈ 0.731**. Metrics land in `results/phase2/*.json`.
+Expected: YOLOv8-cls selected at ≈ **0.861** accuracy (leak-free split); helmet
+**mAP@50 ≈ 0.764** on the held-out test split. Metrics land in
+`results/phase2/*.json`.
+
+> The wheel dataset is split **by source image**, not by crop. Splitting by crop
+> puts different vehicles from the same photo on both sides of the split, which
+> leaks scene, lighting and camera and inflates accuracy. `tests/` enforces this.
 
 ### Phase 3 — tracking, occlusion voting, ReID
 
@@ -138,7 +143,20 @@ python scripts/make_report_assets.py    && python scripts/build_phase1_pdf.py
 python scripts/make_phase2_assets.py    && python scripts/build_phase2_pdf.py
 ```
 
-## 7. Troubleshooting
+## 7. Running the tests
+
+```bash
+pip install pytest
+pytest tests/ -v
+```
+
+The suite is a regression net for defects that actually shipped in this project:
+inverted helmet-compliance semantics, config/weights class mismatch, train/val
+leakage in the wheel dataset, and DeepSORT/OSNet silently degrading to
+fallbacks. Tests that need trained weights or datasets skip cleanly, so the
+suite also runs on a fresh clone and in CI.
+
+## 8. Troubleshooting
 
 | Symptom | Cause and fix |
 |---|---|
@@ -155,7 +173,7 @@ python scripts/make_phase2_assets.py    && python scripts/build_phase2_pdf.py
 > Ultralytics), and mmcv publishes no wheels for torch 2.12. RTMDet is provided
 > via `src/models/cspnext.py` instead.
 
-## 8. Repository layout
+## 9. Repository layout
 
 ```
 config/settings.yaml     single source of truth for paths, thresholds, classes
