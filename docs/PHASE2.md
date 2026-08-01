@@ -137,8 +137,16 @@ Metrics persisted in `results/phase2/*.json`.
 1. Helmet dataset taxonomy (driver/passenger × helmet/no-helmet + bike) maps to
    the project's 7-class compliance scheme; strap/hanging/arm sub-classes need a
    dedicated dataset (future data collection).
-2. Passenger-helmet classes have the fewest instances — targeted collection or
-   augmentation would raise their AP (issue #8).
+2. Passenger-helmet classes have the fewest instances (issue #8) — 65 and 74
+   training instances vs 439–500 for the common classes. **Tried and it made
+   things worse:** 3x duplication-oversampling of images containing these
+   classes dropped overall mAP@50 0.764 → 0.711 and gave only a marginal,
+   mixed change on the target classes (passenger_with_helmet +0.017,
+   passenger_without_helmet −0.023) — plain duplication adds exposure count
+   without visual diversity, so the model overfits rather than generalising.
+   Baseline weights were kept. Real fixes are augmentation-based oversampling
+   (not exact duplication), class-weighted loss, or more real passenger-side
+   images — not attempted here; left open rather than claimed-fixed.
 
 ## Deliverable checklist
 

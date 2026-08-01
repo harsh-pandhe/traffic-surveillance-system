@@ -48,6 +48,12 @@ def main():
     model.train(data=os.path.abspath(args.data), epochs=args.epochs,
                 imgsz=args.imgsz, batch=args.batch, device=args.device,
                 project=OUT, name="helmet_yolo", exist_ok=True, verbose=False)
+    # Ultralytics silently roots relative `project` paths under `runs/<task>/`,
+    # so `OUT/helmet_yolo/weights/best.pt` does not exist -- it lands at
+    # `runs/detect/OUT/helmet_yolo/weights/best.pt`. Read the actual save dir
+    # from the trainer instead of guessing the path a second time (this class
+    # of bug already shipped once for the wheel-classifier trainer).
+    actual_save_dir = model.trainer.save_dir
 
     metrics = model.val(data=os.path.abspath(args.data), device=args.device,
                         project=OUT, name="helmet_val", exist_ok=True)
@@ -68,12 +74,18 @@ def main():
           f"P={result['precision']:.3f}  R={result['recall']:.3f}")
 
     # Copy best weights to the project weights/ dir.
-    best = os.path.join(OUT, "helmet_yolo", "weights", "best.pt")
+    best = os.path.join(actual_save_dir, "weights", "best.pt")
     if os.path.isfile(best):
         import shutil
         os.makedirs("weights", exist_ok=True)
         shutil.copy(best, "weights/helmet_yolov8.pt")
-        print("saved -> weights/helmet_yolov8.pt")
+        print(f"saved -> weights/helmet_yolov8.pt (from {best})")
+    else:
+        # Fail loudly: a silent skip here is exactly how the wheel-classifier
+        # trainer shipped stale weights for an entire benchmark run undetected.
+        raise FileNotFoundError(
+            f"expected trained weights at {best} but they don't exist -- "
+            f"training may have failed silently.")
 
     with open(f"{OUT}/helmet_metrics.json", "w") as fh:
         json.dump(result, fh, indent=2)

@@ -69,6 +69,22 @@ sharply:
 | Learned, 3-class (+Night) | 0.83 | night recall 1.00 |
 | **Learned, 4-class (final)** | **0.79** | see per-class below |
 
+### Addressing the dataset-provenance confound
+
+The 4-class result mixes three source datasets (DAWN for fog/rain, ExDark for
+night, COCO for day), so in principle the classifier could be learning "which
+dataset is this" (camera, compression, resolution) rather than weather itself —
+a real confound worth ruling out rather than assuming away.
+
+The **2-class Fog/Rain row above is the unconfounded check**: both classes come
+from the *same* source (DAWN), so camera and dataset provenance are held
+constant and only the weather condition differs. The classifier still reaches
+0.68 accuracy / 0.60 rain recall on this pair — well above chance (0.50) and
+far above the same-source rule baseline (0.49) — which is direct evidence the
+model is picking up genuine weather signal (haze/edge/texture statistics), not
+just dataset fingerprints. This is the honest evidence for the claim, not the
+inflated 4-class number.
+
 Final 4-class validation (n=220):
 
 | Class | Precision | Recall |
