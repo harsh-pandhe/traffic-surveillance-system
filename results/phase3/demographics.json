@@ -1,0 +1,140 @@
+{
+  "n_crops": 19,
+  "n_succeeded": 19,
+  "results": [
+    {
+      "file": "1785605053292_na.jpg",
+      "age": 42,
+      "age_group": "Middle-Aged",
+      "gender": "Man",
+      "gender_confidence": 0.9405574035644532
+    },
+    {
+      "file": "1785605053623_na.jpg",
+      "age": 28,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9760282135009766
+    },
+    {
+      "file": "1785605053624_na.jpg",
+      "age": 32,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9880905151367188
+    },
+    {
+      "file": "1785605053854_na.jpg",
+      "age": 35,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9234375762939453
+    },
+    {
+      "file": "1785605054436_na.jpg",
+      "age": 35,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.8881894683837891
+    },
+    {
+      "file": "1785605054437_na.jpg",
+      "age": 26,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.7175825500488281
+    },
+    {
+      "file": "1785605054806_na.jpg",
+      "age": 29,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.8919661712646484
+    },
+    {
+      "file": "1785605054807_na.jpg",
+      "age": 35,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9894490051269531
+    },
+    {
+      "file": "1785605055255_na.jpg",
+      "age": 35,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.8881894683837891
+    },
+    {
+      "file": "1785605055256_na.jpg",
+      "age": 26,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.7175825500488281
+    },
+    {
+      "file": "1785605055515_na.jpg",
+      "age": 38,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9310396575927734
+    },
+    {
+      "file": "1785605055780_na.jpg",
+      "age": 36,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.931313247680664
+    },
+    {
+      "file": "1785605056108_na.jpg",
+      "age": 34,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9434049987792968
+    },
+    {
+      "file": "1785605056350_na.jpg",
+      "age": 39,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9018297576904297
+    },
+    {
+      "file": "1785605056603_na.jpg",
+      "age": 39,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9327489471435547
+    },
+    {
+      "file": "1785605056888_na.jpg",
+      "age": 34,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9904493713378906
+    },
+    {
+      "file": "1785605056889_na.jpg",
+      "age": 36,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9496194458007813
+    },
+    {
+      "file": "1785605057274_na.jpg",
+      "age": 28,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9606819152832031
+    },
+    {
+      "file": "1785605057663_na.jpg",
+      "age": 37,
+      "age_group": "Adult",
+      "gender": "Man",
+      "gender_confidence": 0.9210689544677735
+    }
+  ],
+  "note": "Runs offline (separate process from the live pipeline) because torch + TensorFlow in one process segfaults on this hardware -- see src/analytics/demographics.py module docstring. Age estimates should be read as indicative: face crops are small (median 38px in Gate B measurement), below the ~64px DeepFace/FairFace expects for reliable age estimation; gender is more robust at low resolution."
+}

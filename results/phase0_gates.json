@@ -14,8 +14,37 @@
     "reasoning": "62% coverage is workable, but the median face is only 38px while DeepFace/FairFace age estimation wants >=64px. Gender is more robust at low resolution than age. Proceed with the install, but report age estimates as indicative rather than reliable."
   },
   "gate_A_helmet_data": {
-    "status": "PENDING",
+    "status": "COMPLETE",
     "question": "Is the helmet detector still data-limited at 368 images?",
-    "method": "learning curve at 25/50/75/100% of train split, test mAP each"
+    "points": [
+      {
+        "fraction": 0.25,
+        "train_images": 92,
+        "test_mAP50": 0.494373568722026,
+        "test_mAP50_95": 0.2535992355177223
+      },
+      {
+        "fraction": 0.5,
+        "train_images": 184,
+        "test_mAP50": 0.6193948913924182,
+        "test_mAP50_95": 0.3125951936378506
+      },
+      {
+        "fraction": 0.75,
+        "train_images": 276,
+        "test_mAP50": 0.700386382073358,
+        "test_mAP50_95": 0.3395875182869866
+      },
+      {
+        "fraction": 1.0,
+        "train_images": 368,
+        "test_mAP50": 0.7177650772183125,
+        "test_mAP50_95": 0.35113964161411076
+      }
+    ],
+    "final_quarter_gain": 0.017378695144954492,
+    "total_gain": 0.22339150849628653,
+    "verdict": "PLATEAUED - more images unlikely to help materially",
+    "decision": "skip HELMET download; data is not the bottleneck"
   }
 }

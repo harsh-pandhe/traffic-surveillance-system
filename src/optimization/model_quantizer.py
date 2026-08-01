@@ -66,6 +66,36 @@ class ModelOptimizer:
         return model
 
     # ------------------------------------------------------------------ #
+    def finetune(self, model: nn.Module, train_loader, epochs: int = 3,
+                lr: float = 1e-4) -> nn.Module:
+        """
+        Recover accuracy lost to structured pruning with a few epochs of
+        fine-tuning at a low learning rate.
+
+        Structured pruning zeroes whole output channels/filters in every
+        conv/linear layer independently; because layers feed each other, the
+        effect compounds and a pruned-but-never-retrained model can collapse
+        (measured: 30% pruning took SmallCNN from 0.86 to 0.27 accuracy with no
+        fine-tuning). This is expected behaviour for naive structured pruning,
+        not a bug -- the standard fix is exactly this: prune, then fine-tune.
+        """
+        model.train()
+        opt = torch.optim.Adam(model.parameters(), lr=lr)
+        lossf = nn.CrossEntropyLoss()
+        for ep in range(epochs):
+            total = 0.0
+            for x, y in train_loader:
+                opt.zero_grad()
+                loss = lossf(model(x), y)
+                loss.backward()
+                opt.step()
+                total += loss.item() * x.size(0)
+            print(f"[ModelOptimizer] fine-tune epoch {ep+1}/{epochs} "
+                 f"loss={total/len(train_loader.dataset):.3f}")
+        model.eval()
+        return model
+
+    # ------------------------------------------------------------------ #
     def export_onnx(self, model: nn.Module,
                     input_shape: Tuple[int, int, int, int] = (1, 3, 128, 128),
                     output_path: str | None = None) -> str:

@@ -1,0 +1,41 @@
+{
+  "n_tracks": 10006,
+  "n_clips": 910,
+  "occupancy_distribution": {
+    "3": 606,
+    "1": 5516,
+    "2": 3790,
+    "4": 91,
+    "5": 3
+  },
+  "rule_trigger_rates": {
+    "overloaded_pct": 6.995802518488906,
+    "helmet_misuse_pct": 34.2194683190086
+  },
+  "risk_level_distribution": {
+    "MEDIUM": 655,
+    "LOW": 9351
+  },
+  "examples": {
+    "LOW": {
+      "occupancy": 1,
+      "any_no_helmet": true,
+      "score": 2.5,
+      "reasons": [
+        "helmet non-compliance"
+      ]
+    },
+    "MEDIUM": {
+      "occupancy": 3,
+      "any_no_helmet": true,
+      "score": 4.0,
+      "reasons": [
+        "helmet non-compliance",
+        "overloaded (3 riders)"
+      ]
+    },
+    "HIGH": null
+  },
+  "boundary_check": "2 riders not overloaded, 3 riders overloaded: PASS",
+  "note": "Validates rule logic against real ground-truth occupancy and helmet-use labels from 910 real traffic clips (HELMET dataset, Myanmar, 2016). Does not exercise the trained detector -- no images were downloaded for this dataset -- so this checks whether the risk RULES are well-calibrated to real-world occupancy/violation prevalence, independent of detector accuracy."
+}

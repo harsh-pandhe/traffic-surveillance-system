@@ -161,6 +161,26 @@ def test_reid_backend_is_real():
 # --------------------------------------------------------------------------- #
 # 4. Config sanity
 # --------------------------------------------------------------------------- #
+def test_demographics_refuses_inprocess_when_torch_loaded():
+    """
+    torch + TensorFlow in one process segfaults on this hardware (confirmed by
+    bisecting SurveillancePipeline construction: HelmetDetector's YOLO load is
+    fine, WheelClassifier's second YOLO load is not, every time). The guard
+    that prevents DeepFace from loading in that situation is what stands
+    between this and a crashed pipeline -- it must not silently regress.
+    """
+    import sys
+    import torch  # noqa: F401  (imported deliberately to simulate the pipeline)
+    from src.analytics.demographics import DemographicsEstimator
+
+    assert "torch" in sys.modules
+    est = DemographicsEstimator()
+    assert est._deepface is None, (
+        "DeepFace loaded in-process while torch is present - this WILL "
+        "segfault the pipeline on affected hardware. It must queue crops via "
+        "save_for_offline_analysis() instead.")
+
+
 def test_configured_weight_paths_exist():
     """Config must not point at weights that were never produced."""
     from utils.config import load_config, resolve_path

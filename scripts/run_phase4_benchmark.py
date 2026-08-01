@@ -105,7 +105,8 @@ def file_size_mb(p: str) -> float:
 
 # --------------------------------------------------------------------------- #
 def bench_torch_model(name: str, build, weights: str, X, y, n_classes: int,
-                      workdir: str) -> list[dict]:
+                      workdir: str, train_loader=None,
+                      ft_epochs: int = 3) -> list[dict]:
     """Run one torch classifier through all four configurations."""
     rows = []
 
@@ -128,17 +129,30 @@ def bench_torch_model(name: str, build, weights: str, X, y, n_classes: int,
 
     opt = ModelOptimizer()
 
-    # --- pruned (30% structured) ---
+    # --- pruned (30% structured), BEFORE recovery ---
+    # Reported to make the failure mode visible: naive structured pruning with
+    # no retraining collapses accuracy (measured: SmallCNN 0.86 -> 0.27). This
+    # config is diagnostic, not a deployment candidate.
     pruned = build(n_classes)
     pruned.load_state_dict(torch.load(weights, map_location="cpu",
                                       weights_only=True))
     pruned = opt.prune_structured(pruned)
-    p_path = os.path.join(workdir, f"{name}_pruned.pt")
+    p_path = os.path.join(workdir, f"{name}_pruned_naive.pt")
     torch.save(pruned.state_dict(), p_path)
     acc, lat = torch_accuracy_latency(pruned, X, y)
-    record("pruned", acc, lat, file_size_mb(p_path))
+    record("pruned_naive", acc, lat, file_size_mb(p_path),
+          note="no fine-tune after pruning -- diagnostic, not deployable")
 
-    # --- INT8 dynamic (on the pruned model, matching the shipped pipeline) ---
+    # --- pruned + fine-tuned: the actual deployment candidate ---
+    if train_loader is not None:
+        pruned = opt.finetune(pruned, train_loader, epochs=ft_epochs)
+    pf_path = os.path.join(workdir, f"{name}_pruned.pt")
+    torch.save(pruned.state_dict(), pf_path)
+    acc, lat = torch_accuracy_latency(pruned, X, y)
+    record("pruned", acc, lat, file_size_mb(pf_path),
+          note=f"pruned + {ft_epochs}-epoch fine-tune recovery")
+
+    # --- INT8 dynamic (on the recovered pruned model) ---
     q = opt.quantize_dynamic(pruned)
     q_path = os.path.join(workdir, f"{name}_int8.pt")
     torch.save(q.state_dict(), q_path)
@@ -230,6 +244,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=200,
                     help="validation images to evaluate per config")
+    ap.add_argument("--ft-epochs", type=int, default=3,
+                    help="fine-tune epochs to recover pruned accuracy")
     args = ap.parse_args()
 
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -239,13 +255,21 @@ def main():
     X, y, classes = load_val(IMGSZ, args.limit)
     print(f"evaluating on {len(X)} validation crops, classes={classes}\n")
 
+    from torchvision import datasets, transforms
+    from torch.utils.data import DataLoader
+    train_tf = transforms.Compose([transforms.Resize((IMGSZ, IMGSZ)),
+                                   transforms.ToTensor()])
+    train_loader = DataLoader(
+        datasets.ImageFolder("data/wheels/train", train_tf),
+        batch_size=32, shuffle=True, num_workers=2)
+
     rows: list[dict] = []
 
     if os.path.isfile("weights/wheel_cnn.pt"):
         print("=== SmallCNN ===")
         rows += bench_torch_model("SmallCNN", lambda n: SmallCNN(num_classes=n),
                                   "weights/wheel_cnn.pt", X, y, len(classes),
-                                  workdir)
+                                  workdir, train_loader, args.ft_epochs)
 
     if os.path.isfile("weights/wheel_cspnext.pt"):
         print("\n=== RTMDet-CSPNeXt ===")
@@ -253,7 +277,8 @@ def main():
         rows += bench_torch_model("RTMDet-CSPNeXt",
                                   lambda n: CSPNeXtClassifier(num_classes=n),
                                   "weights/wheel_cspnext.pt", X, y,
-                                  len(classes), workdir)
+                                  len(classes), workdir, train_loader,
+                                  args.ft_epochs)
 
     print("\n=== YOLOv8-cls ===")
     rows += bench_yolo_cls(X, y, classes, workdir)

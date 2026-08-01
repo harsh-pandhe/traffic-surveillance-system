@@ -139,6 +139,10 @@ demographics:
   enabled: true
   detector_backend: "opencv"            # face detector for DeepFace
   min_face_size: 32
+  # Where the live pipeline queues face crops when in-process DeepFace is
+  # unavailable (torch+TensorFlow coexistence segfaults on some hardware --
+  # see src/analytics/demographics.py). Process with scripts/run_demographics.py.
+  queue_dir: "outputs/demographics_queue"
 
 risk_indexer:
   weights:
