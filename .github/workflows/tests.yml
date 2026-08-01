@@ -21,13 +21,34 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # setuptools must be current: on Python 3.12 an old one makes
-          # pkg_resources raise "module 'pkgutil' has no attribute 'ImpImporter'",
-          # which silently degrades DeepSORT to a fallback tracker.
-          python -m pip install --upgrade pip setuptools
+          python -m pip install --upgrade pip
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
           pip install pytest
+          # setuptools<81 is required, installed LAST: deep-sort-realtime
+          # imports pkg_resources at load time, but setuptools>=81 dropped
+          # pkg_resources from its wheel entirely (confirmed: a clean venv
+          # with setuptools 83 has no pkg_resources module at all -- it is
+          # not merely an old-API deprecation warning, the import fails
+          # outright). setuptools<81 is the last supported line that still
+          # bundles it. Must run after requirements.txt since some dependency
+          # above may otherwise re-pin a newer setuptools transitively.
+          pip install --upgrade "setuptools<81"
+
+      - name: Verify backends are not silently degraded
+        # A backend falling back to a weaker implementation produces no error
+        # -- only pytest.skip or a passing-but-wrong test would hide it. Fail
+        # the build loudly and immediately if this happens.
+        run: |
+          python -c "
+          from src.tracking.deepsort_tracker import VehicleTracker
+          from src.tracking.multi_camera_reid import VehicleReID
+          t = VehicleTracker()._backend
+          r = VehicleReID()._backend
+          print(f'tracker={t} reid={r}')
+          assert t == 'deepsort', f'tracker fell back to {t!r}'
+          assert r == 'osnet', f'reid fell back to {r!r}'
+          "
 
       - name: Run regression tests
         # Tests that need trained weights or datasets skip cleanly, so this

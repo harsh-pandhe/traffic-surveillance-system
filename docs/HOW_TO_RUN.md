@@ -18,13 +18,23 @@ Surveillance system. Every command here has been run on the reference machine
 git clone https://github.com/harsh-pandhe/traffic-surveillance-system.git
 cd traffic-surveillance-system
 python3 -m venv .venv && source .venv/bin/activate
-pip install --upgrade pip setuptools        # see note below - do not skip
-pip install -r requirements.txt
+pip install --upgrade pip
+pip install -r requirements.txt             # pins setuptools<81 - see note below
 ```
 
-> **Do not skip `--upgrade setuptools`.** On Python 3.12 an old setuptools makes
-> `pkg_resources` raise `module 'pkgutil' has no attribute 'ImpImporter'`, which
-> silently degrades DeepSORT to a fallback IoU tracker instead of failing loudly.
+> **`setuptools` must stay below 81, not just be "recent".** Two different
+> bugs share the same symptom (DeepSORT silently falling back to a weaker
+> tracker) but need opposite fixes:
+> - An **old** setuptools on Python 3.12 makes `pkg_resources` raise
+>   `module 'pkgutil' has no attribute 'ImpImporter'`.
+> - setuptools **81 and newer removed `pkg_resources` from its wheel
+>   entirely** — confirmed on 83.0.0, a clean venv has no `pkg_resources`
+>   module at all, not merely a deprecation warning. `deep-sort-realtime`
+>   imports it at load time, so this also breaks DeepSORT.
+>
+> `requirements.txt` pins `setuptools<81`, which satisfies both constraints.
+> If you `pip install --upgrade setuptools` manually after installing
+> requirements, you will re-break it.
 
 ### Verifying the optional backends
 
@@ -160,10 +170,11 @@ suite also runs on a fresh clone and in CI.
 
 | Symptom | Cause and fix |
 |---|---|
-| `tracker: iou` instead of `deepsort` | Old setuptools on Python 3.12 (`pkgutil.ImpImporter`). Run `pip install --upgrade setuptools`. |
-| `reid: histogram` instead of `osnet` | torchreid ships under two layouts; the code tries both `torchreid.reid.utils` and `torchreid.utils`. Also needs `gdown` and `tensorboard`. |
+| `tracker: iou` instead of `deepsort` | Wrong setuptools version. Run `pip install "setuptools<81"` — not a plain upgrade (see §2 note; setuptools ≥81 also breaks this by removing `pkg_resources` entirely). |
+| `reid: histogram` instead of `osnet` | torchreid ships under two layouts; the code tries both `torchreid.reid.utils` and `torchreid.utils`. Also needs `gdown` and `tensorboard` (both in requirements.txt). |
 | `cannot import name 'AsyncFileLock' from 'filelock'` | Something downgraded `filelock`. Run `pip install --upgrade filelock`. |
-| `module 'pkgutil' has no attribute 'ImpImporter'` | Python 3.12 with old setuptools — upgrade it. Commonly caused by installing `openmim`. |
+| `module 'pkgutil' has no attribute 'ImpImporter'` | setuptools too old for Python 3.12. Fix with `pip install "setuptools<81"` (not a bare upgrade — see §2). Commonly caused by installing `openmim`. |
+| `ModuleNotFoundError: No module named 'pkg_resources'` | setuptools ≥81 removed it entirely. Fix with `pip install "setuptools<81"`. |
 | ONNX export fails with `__obj_flatten__` | You are exporting a *quantized* model. Export FP32 first, then quantize the ONNX graph (this is what `ModelOptimizer.optimize()` now does). |
 | ONNX INT8 fails with `Inferred shape ... (128) vs (4)` | torch ≥ 2.5 uses the dynamo exporter, whose graphs break ONNX Runtime's quantizer. Export with `dynamo=False`. |
 | `HelmetDetector` prints a class-mismatch warning | `config/settings.yaml → helmet_detector.class_names` does not match the loaded weights. Fix the config, or compliance logic will be wrong. |
