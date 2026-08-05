@@ -182,10 +182,12 @@ def class_diagram():
 
 # ============================================================ ACTIVITY DIAGRAM
 def activity_diagram():
-    fig, ax = new_fig(7.5, 10)
-    y = 9.4
+    fig, ax = new_fig(7.5, 10.8)
+    y = 10.2
     start = Circle((3.75, y), 0.15, facecolor="black")
-    ax.add_patch(start); y -= 0.6
+    ax.add_patch(start)
+    ax.text(3.9, y + 0.05, "start", fontsize=7, color=GREY)
+    cursor = y - 0.15  # bottom edge of the start circle
 
     steps = [
         "Read video frame",
@@ -199,18 +201,20 @@ def activity_diagram():
         "Render overlays +\ntelemetry HUD",
         "Write annotated frame",
     ]
-    prev_y = y
-    for i, s in enumerate(steps):
-        cy, *_ = box(ax, (1.75, prev_y - 0.55), 4.0, 0.7, s, color=LIGHT, fontsize=7.8)[:1] or (prev_y,)
-        arrow(ax, (3.75, prev_y), (3.75, prev_y - 0.55))
-        prev_y -= 0.85
+    box_h, gap = 0.7, 0.2
+    for s in steps:
+        box_top = cursor - gap
+        box_bottom = box_top - box_h
+        box(ax, (1.75, box_bottom), 4.0, box_h, s, color=LIGHT, fontsize=7.8)
+        arrow(ax, (3.75, cursor), (3.75, box_top))
+        cursor = box_bottom
 
-    arrow(ax, (3.75, prev_y + 0.3), (3.75, prev_y - 0.1))
-    end_outer = Circle((3.75, prev_y - 0.3), 0.18, facecolor="none",
+    arrow(ax, (3.75, cursor), (3.75, cursor - gap))
+    end_y = cursor - gap - 0.18
+    end_outer = Circle((3.75, end_y), 0.18, facecolor="none",
                        edgecolor="black", linewidth=1.4)
-    end_inner = Circle((3.75, prev_y - 0.3), 0.09, facecolor="black")
+    end_inner = Circle((3.75, end_y), 0.09, facecolor="black")
     ax.add_patch(end_outer); ax.add_patch(end_inner)
-    ax.text(3.9, y + 0.3, "start", fontsize=7, color=GREY)
 
     ax.set_title("Figure. Activity Diagram - Per-Frame Pipeline Flow", fontsize=10)
     fig.tight_layout(); fig.savefig(f"{OUT}/uml_activity.png", dpi=150); plt.close(fig)
