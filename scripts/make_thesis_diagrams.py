@@ -122,12 +122,13 @@ def dfd_level2():
 
 # ============================================================ UML CLASS DIAGRAM
 def class_diagram():
-    fig, ax = new_fig(11, 7.5)
+    fig, ax = new_fig(11, 7.7)
 
     def uml_class(x, y, w, h, title, attrs, methods, color=LIGHT):
         box(ax, (x, y), w, h, "", color=color, fontsize=1)
         ax.plot([x, x + w], [y + h - 0.35, y + h - 0.35], color=NAVY, linewidth=1)
-        ax.text(x + w / 2, y + h - 0.2, title, ha="center", fontsize=8, fontweight="bold")
+        title_dy = 0.28 if "\n" in title else 0.2
+        ax.text(x + w / 2, y + h - title_dy, title, ha="center", fontsize=7.6, fontweight="bold")
         body_h = h - 0.35
         n_attr = len(attrs)
         attr_y0 = y + body_h - 0.15
@@ -137,7 +138,7 @@ def class_diagram():
         ax.plot([x, x + w], [split_y, split_y], color=NAVY, linewidth=0.6)
         for i, m in enumerate(methods):
             ax.text(x + 0.1, split_y - 0.18 - i * 0.2, f"+ {m}()", fontsize=6.6, va="top")
-        return (x + w / 2, y + h)
+        return {"cx": x + w / 2, "top": y + h, "bottom": y, "right": x + w, "left": x}
 
     p1 = uml_class(0.3, 5.0, 2.6, 2.4, "SurveillancePipeline",
                    ["scene", "enhancer", "helmet", "wheels", "tracker",
@@ -158,11 +159,22 @@ def class_diagram():
     p8 = uml_class(3.4, 0.8, 2.3, 1.6, "DemographicsEstimator",
                    ["enabled", "queue_dir"], ["estimate", "save_for_offline"])
 
-    for target in (p2, p3, p4):
-        arrow(ax, (p1[0], p1[1] - 0.05), (target[0], target[1] + 0.02))
-    for target in (p5, p6, p7):
-        arrow(ax, (1.6, 5.2), (target[0], target[1] + 0.02))
-    arrow(ax, (4.55, 3.2), (4.55, 2.4))
+    def bus_fanout(exit_xy, targets_top, bus_y):
+        """Orthogonal tree connector: drop/rise to a horizontal bus clear of
+        every box, then a short arrowed stub into each target's edge -- avoids
+        diagonal lines cutting through box titles/attributes."""
+        ex, ey = exit_xy
+        ax.plot([ex, ex], [ey, bus_y], color=NAVY, linewidth=1.1)
+        xs = [t[0] for t in targets_top] + [ex]
+        ax.plot([min(xs), max(xs)], [bus_y, bus_y], color=NAVY, linewidth=1.1)
+        for tx, ty in targets_top:
+            arrow(ax, (tx, bus_y), (tx, ty))
+
+    top_targets = [(p2["cx"], p2["top"]), (p3["cx"], p3["top"]), (p4["cx"], p4["top"])]
+    bus_fanout((p1["right"], 7.1), top_targets, 7.1)
+    bottom_targets = [(p5["cx"], p5["top"]), (p6["cx"], p6["top"]), (p7["cx"], p7["top"])]
+    bus_fanout((p1["cx"], p1["bottom"]), bottom_targets, 4.9)
+    arrow(ax, (p5["cx"], p5["bottom"]), (p8["cx"], p8["top"]))
 
     ax.set_title("Figure. UML Class Diagram (Pipeline Core Classes)", fontsize=10)
     fig.tight_layout(); fig.savefig(f"{OUT}/uml_class.png", dpi=150); plt.close(fig)
@@ -258,6 +270,58 @@ def use_case_diagram():
     fig.tight_layout(); fig.savefig(f"{OUT}/uml_usecase.png", dpi=150); plt.close(fig)
 
 
+# ============================================================ SEQUENCE DIAGRAM (process isolation)
+def sequence_diagram():
+    """Real architecture: the live pipeline process (which has torch loaded)
+    never calls DeepFace directly -- it queues crops to disk and a separate
+    process, started independently and never importing torch, drains the
+    queue. Drawn as a standard UML sequence diagram (lifelines + messages)."""
+    fig, ax = new_fig(9.5, 7)
+    lifelines = [("Video Frame", 1.2), ("SurveillancePipeline\n(torch loaded)", 3.6),
+                 ("outputs/demographics_queue/\n(disk)", 6.4), ("Offline Demographics Process\n(never imports torch)", 8.6)]
+    top_y, bot_y = 6.3, 0.6
+    for name, x in lifelines:
+        box(ax, (x - 0.9, top_y), 1.8, 0.55, name, color=LIGHT, fontsize=7)
+        ax.plot([x, x], [top_y, bot_y], color=GREY, linewidth=1, linestyle=(0, (4, 3)))
+
+    def msg(y, x1, x2, label, dashed=False):
+        arrow(ax, (x1, y), (x2, y), style="-|>" if not dashed else "-|>",
+             color=NAVY if not dashed else GREY)
+        ax.plot([x1, x2], [y, y], color=NAVY if not dashed else GREY,
+                linewidth=1.1, linestyle="--" if dashed else "-")
+        ax.text((x1 + x2) / 2, y + 0.13, label, fontsize=7, ha="center")
+
+    msg(5.6, 1.2, 3.6, "frame")
+    msg(5.0, 3.6, 3.6 + 0.01, "detect + crop face region", dashed=False)
+    msg(4.4, 3.6, 6.4, "save_for_offline_analysis(crop)")
+    msg(3.6, 3.6, 1.2 + 1.0, "annotated frame (no demographics yet)")
+    ax.text(3.6, 3.15, "-- separate OS process, started independently --", fontsize=6.8,
+           ha="center", color=GREY, style="italic")
+    msg(2.5, 6.4, 8.6, "poll queue dir")
+    msg(1.9, 8.6, 8.6 - 0.01, "run DeepFace (age, gender)")
+    msg(1.3, 8.6, 6.4, "write results/phase3/demographics.json")
+    ax.set_title("Figure. Sequence Diagram - Process-Isolated Demographics", fontsize=10)
+    fig.tight_layout(); fig.savefig(f"{OUT}/uml_sequence.png", dpi=150); plt.close(fig)
+
+
+# ============================================================ GATE A LEARNING CURVE (real data)
+def gate_learning_curve():
+    import json
+    gates = json.load(open("results/phase0_gates.json"))
+    pts = gates["gate_A_helmet_data"]["points"]
+    xs = [p["train_images"] for p in pts]
+    ys = [p["test_mAP50"] for p in pts]
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(xs, ys, marker="o", color=BLUE, linewidth=2, markersize=7)
+    for x, y in zip(xs, ys):
+        ax.annotate(f"{y:.3f}", (x, y), textcoords="offset points", xytext=(0, 8),
+                   ha="center", fontsize=8)
+    ax.set_xlabel("Training images"); ax.set_ylabel("Test mAP@50")
+    ax.set_title("Gate A: Helmet Detector Learning Curve (Real Data)")
+    ax.grid(alpha=0.3)
+    fig.tight_layout(); fig.savefig(f"{OUT}/gate_a_learning_curve.png", dpi=150); plt.close(fig)
+
+
 if __name__ == "__main__":
     dfd_level0()
     dfd_level1()
@@ -265,4 +329,6 @@ if __name__ == "__main__":
     class_diagram()
     activity_diagram()
     use_case_diagram()
+    sequence_diagram()
+    gate_learning_curve()
     print(f"diagrams -> {OUT}/")
