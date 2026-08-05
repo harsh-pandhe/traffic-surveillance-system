@@ -605,7 +605,7 @@ on.""")
 table([["Subsystem", "Preferred backend", "Fallback", "Active on this run"],
        ["Tracking", "DeepSORT (deep-sort-realtime)", "IOU-only tracker", "DeepSORT"],
        ["Cross-camera ReID", "OSNet (torchreid)", "Colour-histogram matching", "OSNet"],
-       ["Detection", "Ultralytics YOLOv8", "&mdash; (required)", "Ultralytics YOLOv8"],
+       ["Detection", "Ultralytics YOLOv8", "— (required)", "Ultralytics YOLOv8"],
        ["Demographics", "DeepFace (process-isolated)", "Skipped, logged", "DeepFace"]],
       [3.4 * cm, 5 * cm, 4.3 * cm, 3.4 * cm], font=8.2)
 pagebreak()
@@ -804,17 +804,17 @@ reported around, which is the standard this thesis holds itself to
 throughout.""")
 p("Table 6.1 consolidates the headline measured result from every phase.", "Body")
 table([["Phase", "Metric", "Measured value", "Evidence"],
-       ["1 &ndash; Preprocessing", "Scene-classification accuracy", f"{P1['accuracy']:.2f}", "CASE 1"],
-       ["2 &ndash; Detection", "Wheel-count accuracy (leak-free)", f"{P2W['yolo']['accuracy']:.3f}", "CASE 2"],
-       ["2 &ndash; Detection", "Helmet mAP@50 (held-out test)", f"{P2H['test']['mAP50']:.3f}", "CASE 3"],
-       ["3 &ndash; Tracking/ReID", "Flip-rate reduction (N=1&rarr;30)",
+       ["1 – Preprocessing", "Scene-classification accuracy", f"{P1['accuracy']:.2f}", "CASE 1"],
+       ["2 – Detection", "Wheel-count accuracy (leak-free)", f"{P2W['yolo']['accuracy']:.3f}", "CASE 2"],
+       ["2 – Detection", "Helmet mAP@50 (held-out test)", f"{P2H['test']['mAP50']:.3f}", "CASE 3"],
+       ["3 – Tracking/ReID", "Flip-rate reduction (N=1 to N=30)",
         f"{(1 - P3O['flip_rate_overall']['30']/P3O['flip_rate_overall']['1'])*100:.1f}%", "CASE 4"],
-       ["3 &ndash; Tracking/ReID", "Cross-camera ReID Rank-1 (off-the-shelf)", f"{P3REID['rank1']:.3f}", "Sec. 5.2.1"],
-       ["3 &ndash; Tracking/ReID", "Risk-rule tracks validated", f"{P3RISK['n_tracks']:,}", "CASE 5"],
-       ["3 &ndash; Tracking/ReID", "End-to-end throughput", f"{P3PIPE['fps_mean']:.2f} FPS", "CASE 8"],
-       ["4 &ndash; Optimization", "Pruned+fine-tuned accuracy retention",
+       ["3 – Tracking/ReID", "Cross-camera ReID Rank-1 (off-the-shelf)", f"{P3REID['rank1']:.3f}", "Sec. 5.2.1"],
+       ["3 – Tracking/ReID", "Risk-rule tracks validated", f"{P3RISK['n_tracks']:,}", "CASE 5"],
+       ["3 – Tracking/ReID", "End-to-end throughput", f"{P3PIPE['fps_mean']:.2f} FPS", "CASE 8"],
+       ["4 – Optimization", "Pruned+fine-tuned accuracy retention",
         f"{p4row('SmallCNN','pruned')['accuracy_retention']:.2f}", "CASE 6"],
-       ["4 &ndash; Optimization", "ONNX INT8 model-size reduction", "3.8&ndash;3.9x", "CASE 7"]],
+       ["4 – Optimization", "ONNX INT8 model-size reduction", "3.8–3.9x", "CASE 7"]],
       [3.3 * cm, 5.5 * cm, 3.6 * cm, 2.9 * cm], font=8.2)
 p("6.2 Future Scope", "H1c"); hr()
 bullets([
@@ -856,12 +856,12 @@ pagebreak()
 
 p("Appendix A &ndash; Training Hyperparameters", "H1c"); hr()
 table([["Model", "Epochs", "Image size", "Batch", "Optimizer", "Notes"],
-       ["Scene classifier (RF)", "&mdash;", "&mdash;", "&mdash;", "300 trees", "15 hand-engineered features"],
-       ["SmallCNN (wheel)", "12", "96&times;96", "32", "Adam, cosine LR", "0.24M params, from scratch"],
-       ["CSPNeXt (wheel)", "12", "96&times;96", "32", "Adam, cosine LR", "2.35M params, from scratch"],
-       ["YOLOv8-cls (wheel)", "8", "96&times;96", "32", "Ultralytics default", "ImageNet-pretrained"],
-       ["YOLOv8n (helmet)", "25", "416&times;416", "8", "Ultralytics default", "COCO-pretrained backbone"],
-       ["Pruning fine-tune", "3", "96&times;96", "32", "Adam, lr=1e-4", "post-prune recovery"]],
+       ["Scene classifier (RF)", "—", "—", "—", "300 trees", "15 hand-engineered features"],
+       ["SmallCNN (wheel)", "12", "96×96", "32", "Adam, cosine LR", "0.24M params, from scratch"],
+       ["CSPNeXt (wheel)", "12", "96×96", "32", "Adam, cosine LR", "2.35M params, from scratch"],
+       ["YOLOv8-cls (wheel)", "8", "96×96", "32", "Ultralytics default", "ImageNet-pretrained"],
+       ["YOLOv8n (helmet)", "25", "416×416", "8", "Ultralytics default", "COCO-pretrained backbone"],
+       ["Pruning fine-tune", "3", "96×96", "32", "Adam, lr=1e-4", "post-prune recovery"]],
       [3.3 * cm, 1.6 * cm, 2.1 * cm, 1.6 * cm, 2.9 * cm, 3.7 * cm], font=7.8)
 pagebreak()
 
