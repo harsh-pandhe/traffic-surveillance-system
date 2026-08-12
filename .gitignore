@@ -5,6 +5,9 @@ __pycache__/
 venv/
 *.egg-info/
 
+# Node (docx-js paper builder)
+node_modules/
+
 # Weights / models (regenerable; kept out of git)
 weights/*.pt
 weights/*.pth
