@@ -2,8 +2,10 @@
  * scripts/build_ijsrset_paper2.js
  * ----------------------------------
  * Part II of the two-paper IJSRSET submission: Results and Discussion,
- * numeric Comparison with the literature surveyed in Part I, a trimmed
- * (not eliminated) Limitations section, and Conclusion. Assumes the reader
+ * numeric Comparison with the literature surveyed in Part I, and Conclusion
+ * (per the guide's request, there is no standalone Limitations section --
+ * the one substantive limitation, the ReID gap, is folded into Conclusion's
+ * future work instead of repeated in its own section). Assumes the reader
  * has read Part I -- methodology and DFD/UML diagrams are NOT repeated here,
  * only new result figures/tables.
  *
@@ -151,15 +153,9 @@ const comparisonSection = [
   bodyPara("The gap on helmet detection and weather classification against Jia et al. [10] and Anoop and Deivanathan [12] respectively is explained mainly by taxonomy and dataset difficulty rather than a weaker detector: this work's seven-class taxonomy distinguishes driver from passenger and helmet status separately, a strictly harder classification problem than the two-class framing in [10], and the weather classifier here is trained and evaluated on a real, multi-source, adverse-condition dataset rather than a single controlled camera setup. Reporting the gap honestly, along with its likely cause, is preferred here over omitting the comparison or presenting the numbers as directly equivalent."),
 ];
 
-// ============================================================ III. LIMITATIONS
-const limitationsSection = [
-  sectionHeading("III. Limitations"),
-  bodyPara("One limitation is noted briefly. Cross-camera re-identification uses an off-the-shelf backbone without metric-learning fine-tuning, so its accuracy trails fine-tuned systems; fine-tuning on VeRi-776's own training split is planned future work."),
-];
-
-// ============================================================ IV. CONCLUSION
+// ============================================================ III. CONCLUSION
 const conclusionSection = [
-  sectionHeading("IV. Conclusion"),
+  sectionHeading("III. Conclusion"),
   bodyPara(`This work presented and evaluated a complete, CPU-only traffic surveillance pipeline. The learned scene classifier reaches ${P1.accuracy.toFixed(2)} accuracy, the selected wheel-count classifier reaches ${P2W.yolo.accuracy.toFixed(3)} accuracy under a leakage-free protocol, the helmet detector reaches ${P2H.test.mAP50.toFixed(3)} mean average precision on held-out data, and model optimization recovers accuracy lost to naive pruning while shrinking deployed models 3.8 to 3.9 times. Future work includes fine-tuning the re-identification backbone on VeRi-776's own training split, sourcing data for granular helmet sub-classes not covered by the current taxonomy, and extending the per-seat helmet-violation output with a targeted gender attribute for the non-helmeted passenger, rather than a general demographics module.`),
 ];
 
@@ -191,7 +187,7 @@ const doc = new Document({
     children: [title, authors, ...affilBlock, abstractHeading, abstractPara, keywordsPara, divider],
   }, {
     properties: { page: { size: { width: mm(210), height: mm(297) }, margin: { top: mm(18.1), bottom: mm(20), left: mm(19), right: mm(16) } }, column: { count: 2, space: mm(12.7), equalWidth: true, separate: false } },
-    children: [...resultsSection, ...comparisonSection, ...limitationsSection, ...conclusionSection, ...referencesSection],
+    children: [...resultsSection, ...comparisonSection, ...conclusionSection, ...referencesSection],
   }],
 });
 
