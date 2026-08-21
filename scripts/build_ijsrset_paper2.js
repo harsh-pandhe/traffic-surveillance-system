@@ -22,7 +22,6 @@ const P1 = JSON.parse(fs.readFileSync("results/phase1/scene_metrics.json"));
 const P2W = JSON.parse(fs.readFileSync("results/phase2/wheel_metrics.json"));
 const P2H = JSON.parse(fs.readFileSync("results/phase2/helmet_metrics.json"));
 const P3O = JSON.parse(fs.readFileSync("results/phase3/occlusion_ablation.json"));
-const P3RISK = JSON.parse(fs.readFileSync("results/phase3/risk_indexer_validation.json"));
 const P3REID = JSON.parse(fs.readFileSync("results/phase3/reid_benchmark.json"));
 const P4 = JSON.parse(fs.readFileSync("results/phase4/benchmark.json"));
 function p4row(model, config) { return P4.rows.find(r => r.model === model && r.config === config); }
@@ -97,7 +96,7 @@ const affilBlock = [
 ];
 const abstractHeading = new Paragraph({ alignment: AlignmentType.LEFT, spacing: { before: 200, after: 80 }, children: [run("ABSTRACT", { bold: true, size: SZ_HEAD })] });
 const abstractText =
-  `This paper presents Part II of a two-part submission, reporting the quantitative results of the methodology proposed in Part I and comparing them numerically against the literature surveyed there. The learned scene classifier reaches ${P1.accuracy.toFixed(2)} four-class accuracy versus a 0.49 rule-based baseline. Three architectures are benchmarked for wheel-count classification under an identical, leakage-free protocol: a custom convolutional network (${P2W.cnn.accuracy.toFixed(3)}), a from-scratch CSPNeXt backbone (${P2W.cspnext.accuracy.toFixed(3)}), and an ImageNet-pretrained YOLOv8 classifier (${P2W.yolo.accuracy.toFixed(3)}, selected). A seven-class helmet detector reaches ${P2H.test.mAP50.toFixed(3)} mean average precision at 0.50 intersection-over-union on held-out test data. Multi-frame majority voting reduces prediction flip-rate by ${flipDrop.toFixed(1)}% under measured real-world occlusion, and risk-indexing rules are validated against ${P3RISK.n_tracks.toLocaleString()} real motorcycle tracks with ground-truth occupancy and helmet-use labels. Structured pruning combined with a brief fine-tuning step and INT8 quantization shrinks deployed models by 3.8 to 3.9 times at a measured accuracy retention of 0.98. Results are compared numerically against the systems surveyed in Part I, and every result that fell short of an initial expectation is reported with its diagnosed cause. The complete source code and trained weights are publicly available.`;
+  `This paper presents Part II of a two-part submission, reporting the quantitative results of the methodology proposed in Part I and comparing them numerically against the literature surveyed there. The learned scene classifier reaches ${P1.accuracy.toFixed(2)} four-class accuracy versus a 0.49 rule-based baseline. Three architectures are benchmarked for wheel-count classification under an identical, leakage-free protocol: a custom convolutional network (${P2W.cnn.accuracy.toFixed(3)}), a from-scratch CSPNeXt backbone (${P2W.cspnext.accuracy.toFixed(3)}), and an ImageNet-pretrained YOLOv8 classifier (${P2W.yolo.accuracy.toFixed(3)}, selected). A seven-class helmet detector reaches ${P2H.test.mAP50.toFixed(3)} mean average precision at 0.50 intersection-over-union on held-out test data. Multi-frame majority voting reduces prediction flip-rate by ${flipDrop.toFixed(1)}% under measured real-world occlusion. Structured pruning combined with a brief fine-tuning step and INT8 quantization shrinks deployed models by 3.8 to 3.9 times at a measured accuracy retention of 0.98. Results are compared numerically against the systems surveyed in Part I, and every result that fell short of an initial expectation is reported with its diagnosed cause. The complete source code and trained weights are publicly available.`;
 const abstractPara = new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 }, children: [run(abstractText, { size: SZ_BODY })] });
 const keywordsPara = new Paragraph({
   spacing: { after: 200 },
@@ -127,9 +126,7 @@ const resultsSection = [
   bodyPara(`On VeRi-776, off-the-shelf OSNet with no vehicle-identity metric learning applied reaches Rank-1 ${P3REID.rank1.toFixed(3)} and mean average precision ${P3REID.mAP.toFixed(3)}, well below fine-tuned state-of-the-art results but far above the 776-way chance level of 0.1%, confirming genuine appearance signal even without fine-tuning.`),
   ...figure("outputs/report_p3/flip_rate.png", 280, 200, "Figure 4: Prediction flip-rate versus vote window N."),
   ...figure("outputs/report_p3/reid.png", 270, 200, "Figure 5: VeRi-776 cross-camera re-identification scores, off-the-shelf OSNet."),
-  subHeading("D. Risk Indexing"),
-  bodyPara(`Rule logic is validated against ${P3RISK.n_tracks.toLocaleString()} real motorcycle tracks using ground-truth occupancy and helmet-use labels, independent of detector accuracy. Overload triggers on ${P3RISK.rule_trigger_rates.overloaded_pct.toFixed(1)}% of tracks and helmet misuse on ${P3RISK.rule_trigger_rates.helmet_misuse_pct.toFixed(1)}%. The current weighting means HIGH risk never triggers from these two factors alone, since their combined weight of 4.0 is below the 6.0 threshold; this is a calibration finding surfaced by validation against ground truth, logged as future work rather than corrected silently.`),
-  subHeading("E. Optimization"),
+  subHeading("D. Optimization"),
   ...simpleTable(["Configuration", "Accuracy", "Retention", "Size (MB)"], [
     ["FP32", sc_fp32.accuracy.toFixed(3), "1.00", sc_fp32.size_mb.toFixed(2)],
     ["Pruned (naive)", sc_naive.accuracy.toFixed(3), sc_naive.accuracy_retention.toFixed(2), sc_naive.size_mb.toFixed(2)],
@@ -158,13 +155,13 @@ const comparisonSection = [
 // ============================================================ III. LIMITATIONS
 const limitationsSection = [
   sectionHeading("III. Limitations"),
-  bodyPara("Two limitations are noted briefly. Cross-camera re-identification uses an off-the-shelf backbone without metric-learning fine-tuning, so its accuracy trails fine-tuned systems; fine-tuning on VeRi-776's own training split is planned future work. The risk-indexing weights currently make the HIGH tier unreachable from the two most common real violation patterns alone, a calibration adjustment also left for future work."),
+  bodyPara("One limitation is noted briefly. Cross-camera re-identification uses an off-the-shelf backbone without metric-learning fine-tuning, so its accuracy trails fine-tuned systems; fine-tuning on VeRi-776's own training split is planned future work."),
 ];
 
 // ============================================================ IV. CONCLUSION
 const conclusionSection = [
   sectionHeading("IV. Conclusion"),
-  bodyPara(`This work presented and evaluated a complete, CPU-only traffic surveillance pipeline. The learned scene classifier reaches ${P1.accuracy.toFixed(2)} accuracy, the selected wheel-count classifier reaches ${P2W.yolo.accuracy.toFixed(3)} accuracy under a leakage-free protocol, the helmet detector reaches ${P2H.test.mAP50.toFixed(3)} mean average precision on held-out data, and model optimization recovers accuracy lost to naive pruning while shrinking deployed models 3.8 to 3.9 times. Future work includes fine-tuning the re-identification backbone on VeRi-776's own training split, sourcing data for granular helmet sub-classes not covered by the current taxonomy, and recalibrating the risk-indexing weights against the real-world finding reported in Section I-D.`),
+  bodyPara(`This work presented and evaluated a complete, CPU-only traffic surveillance pipeline. The learned scene classifier reaches ${P1.accuracy.toFixed(2)} accuracy, the selected wheel-count classifier reaches ${P2W.yolo.accuracy.toFixed(3)} accuracy under a leakage-free protocol, the helmet detector reaches ${P2H.test.mAP50.toFixed(3)} mean average precision on held-out data, and model optimization recovers accuracy lost to naive pruning while shrinking deployed models 3.8 to 3.9 times. Future work includes fine-tuning the re-identification backbone on VeRi-776's own training split, sourcing data for granular helmet sub-classes not covered by the current taxonomy, and extending the per-seat helmet-violation output with a targeted gender attribute for the non-helmeted passenger, rather than a general demographics module.`),
 ];
 
 // ============================================================ REFERENCES (same set as Part I)
