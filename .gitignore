@@ -28,6 +28,7 @@ outputs/
 .DS_Store
 .idea/
 .vscode/
+.~lock.*#
 
 # Ultralytics runtime artifacts
 /yolov8*.pt

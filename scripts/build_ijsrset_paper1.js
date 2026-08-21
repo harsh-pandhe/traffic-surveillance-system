@@ -57,14 +57,14 @@ const title = new Paragraph({
 });
 const authors = new Paragraph({
   alignment: AlignmentType.CENTER, spacing: { after: 40 },
-  children: [run("Harsh Pandhe*1, Shifali Doshi2, Kiran Kamate3, [Guide Name]4", { bold: true, size: SZ_AUTHOR })],
+  children: [run("Kiran Kamate*1, [Guide Name]2", { bold: true, size: SZ_AUTHOR })],
 });
 function affilLine(text) {
   return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [run(text, { italics: true, size: SZ_AFFIL })] });
 }
 const affilBlock = [
-  affilLine("*1,2,3Student, Department of Computer Science & Engineering, Walchand Institute of Technology, Solapur, Maharashtra, India"),
-  affilLine("4[Designation], Department of Computer Science & Engineering, Walchand Institute of Technology, Solapur, Maharashtra, India"),
+  affilLine("*1Student, Department of Computer Science & Engineering, Walchand Institute of Technology, Solapur, Maharashtra, India"),
+  affilLine("2[Designation], Department of Computer Science & Engineering, Walchand Institute of Technology, Solapur, Maharashtra, India"),
   affilLine("*Corresponding Author: [corresponding author email] | ORCID: [0000-0000-0000-0000]"),
 ];
 const abstractHeading = new Paragraph({ alignment: AlignmentType.LEFT, spacing: { before: 200, after: 80 }, children: [run("ABSTRACT", { bold: true, size: SZ_HEAD })] });

@@ -49,6 +49,7 @@ class HelmetDetection:
     is_violation: bool = False
     face_exposed: bool = False
     is_rider: bool = False
+    is_vehicle: bool = False
 
 
 class HelmetDetector:
@@ -136,11 +137,15 @@ class HelmetDetector:
     def _remap_fallback_cls(self, coco_cls: int) -> int | None:
         """
         Map generic COCO classes to our schema when running the fallback model.
-        COCO 0 == 'person' -> treat as a generic rider so the pipeline still
-        produces tracks. All other COCO classes are ignored.
+        COCO 0 == 'person' -> generic rider; COCO 1 == 'bicycle' / 3 ==
+        'motorcycle' -> generic vehicle, so tracking (which now runs on
+        vehicle boxes, not rider boxes) still produces tracks without the
+        fine-tuned weights. All other COCO classes are ignored.
         """
         if coco_cls == 0 and self.rider_ids:
             return min(self.rider_ids)
+        if coco_cls in (1, 3) and self.vehicle_ids:
+            return min(self.vehicle_ids)
         return None
 
     # ------------------------------------------------------------------ #
@@ -182,6 +187,7 @@ class HelmetDetector:
                     is_violation=cls_id in self.violation_ids,
                     face_exposed=cls_id in self.face_exposed_ids,
                     is_rider=cls_id in self.rider_ids,
+                    is_vehicle=cls_id in self.vehicle_ids,
                 )
             )
         return detections

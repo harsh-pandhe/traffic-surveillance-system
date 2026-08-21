@@ -7,13 +7,16 @@ Surveillance system.
 Per-frame flow:
     1. Scene classify (DAY/NIGHT/FOG/RAIN)      [Phase 1]
     2. Adaptive enhance (CLAHE / dehaze / denoise)
-    3. Helmet-compliance detection (7 classes)  [Phase 2]
+    3. Detect vehicles + riders in one pass (7-class detector) [Phase 2]
     4. Wheel-count classification per vehicle crop
-    5. Track vehicles + temporal wheel voting   [Phase 3]
-    6. Cross-camera ReID (OSNet global IDs)
-    7. Demographics for exposed-face riders
-    8. Risk index + banner                       [Phase 3]
-    9. Visual overlays + telemetry, write output
+    5. Track VEHICLES + temporal wheel voting   [Phase 3]
+    6. Helmet compliance, checked only within 2-wheeler tracks
+       (this detector's driver/passenger x helmet-status taxonomy
+       only applies to motorcycles; other wheel classes skip this check)
+    7. Cross-camera ReID (OSNet global IDs)
+    8. Demographics for exposed-face riders
+    9. Risk index + banner                       [Phase 3]
+    10. Visual overlays + telemetry, write output
 
 Usage:
     python main.py --source data/raw/clip.mp4 --camera cam_A
@@ -95,6 +98,16 @@ class SurveillancePipeline:
         return frame[y1:y2, x1:x2].copy()
 
     # ------------------------------------------------------------------ #
+    @staticmethod
+    def _bbox_center_in(outer: List[float], inner: List[float]) -> bool:
+        """True if inner's box center falls within outer -- used to associate
+        a rider detection with the vehicle track it is riding on."""
+        ox1, oy1, ox2, oy2 = outer
+        icx = (inner[0] + inner[2]) / 2.0
+        icy = (inner[1] + inner[3]) / 2.0
+        return ox1 <= icx <= ox2 and oy1 <= icy <= oy2
+
+    # ------------------------------------------------------------------ #
     def process_frame(self, frame: np.ndarray, frame_idx: int) -> np.ndarray:
         self.meter.start()
 
@@ -102,22 +115,21 @@ class SurveillancePipeline:
         scene_res = self.scene.classify(frame)
         enhanced = self.enhancer.enhance(frame, scene_res.label)
 
-        # --- Phase 2: helmet detection ---
+        # --- Phase 2: single detector call yields vehicles + riders together ---
         dets = self.helmet.detect(enhanced)
-
-        # Split rider detections (they become the vehicles we track).
+        vehicle_dets = [d for d in dets if d.is_vehicle]
         rider_dets = [d for d in dets if d.is_rider]
-        helmet_violations = self.helmet.count_violations(dets)
-        rider_count = max(self.helmet.count_riders(dets), len(rider_dets))
 
-        # --- Phase 2: wheel classification per rider/vehicle crop ---
+        # --- Phase 3: track the VEHICLE boxes (not rider boxes) ---
+        # Wheel-count classification has to run per-frame, before the box is
+        # handed to the tracker, since the tracker's vote buffer only smooths
+        # a classification already made -- it cannot classify after the fact.
         track_inputs: List[Tuple[List[float], float, int]] = []
-        for d in rider_dets:
+        for d in vehicle_dets:
             crop = self._crop(enhanced, d.bbox)
             wp = self.wheels.classify_one(crop)
             track_inputs.append((d.bbox, d.conf, wp.cls_id))
 
-        # --- Phase 3: tracking with temporal wheel voting ---
         tracks = self.tracker.update(enhanced, track_inputs)
 
         annotated = viz.draw_helmet_detections(enhanced, dets)
@@ -131,6 +143,19 @@ class SurveillancePipeline:
 
             wheel_cls = tr.majority_wheel_class()
             wheel_name = WHEEL_CLASS_NAMES.get(wheel_cls, "?")
+
+            # --- Helmet compliance is only checked within 2-wheeler tracks ---
+            # (the taxonomy this detector was trained on -- driver/passenger x
+            # helmet-status -- only applies to motorcycles in the first place).
+            if wheel_cls == 0:
+                vehicle_riders = [
+                    d for d in rider_dets if self._bbox_center_in(tr.bbox, d.bbox)
+                ]
+                helmet_violations = self.helmet.count_violations(vehicle_riders)
+                rider_count = self.helmet.count_riders(vehicle_riders)
+            else:
+                helmet_violations = 0
+                rider_count = 0
 
             # --- Phase 3: cross-camera ReID ---
             crop = self._crop(enhanced, tr.bbox)

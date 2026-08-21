@@ -181,6 +181,72 @@ def test_demographics_refuses_inprocess_when_torch_loaded():
         "save_for_offline_analysis() instead.")
 
 
+# --------------------------------------------------------------------------- #
+# 5. Pipeline reorder: track vehicles first, gate helmet-checking to 2-wheelers
+# --------------------------------------------------------------------------- #
+@pytest.mark.skipif(not os.path.isfile(HELMET_WEIGHTS),
+                    reason="helmet weights not present")
+def test_vehicle_ids_resolved_and_populated():
+    """
+    'vehicle_classes' -> is_vehicle was computed from config but never
+    actually consumed anywhere before the pipeline was reordered to track
+    vehicle boxes (not rider boxes) -- dead code that happened to be inert.
+    Locks in that it is real and populated on real detections now that
+    tracking depends on it.
+    """
+    import cv2
+    from src.models.helmet_detector import HelmetDetector
+    det = HelmetDetector()
+    assert det.vehicle_ids, "no class resolved to vehicle_classes in config"
+    found_vehicle = False
+    for p in sorted(glob.glob(os.path.join(HELMET_TEST_IMAGES, "*")))[:25]:
+        img = cv2.imread(p)
+        if img is None:
+            continue
+        for d in det.detect(img):
+            if d.is_vehicle:
+                found_vehicle = True
+    assert found_vehicle, "detector never flagged a real detection as is_vehicle"
+
+
+@pytest.mark.skipif(
+    not (os.path.isfile(HELMET_WEIGHTS) and os.path.isdir(HELMET_TEST_IMAGES)
+         and os.path.isfile("weights/wheel_yolov8_cls.pt")),
+    reason="helmet/wheel weights or test images not present")
+def test_helmet_check_gated_to_2wheeler_tracks():
+    """
+    Helmet compliance must only be evaluated for tracks the wheel classifier
+    calls 2-wheeler -- the driver/passenger x helmet-status taxonomy this
+    detector was trained on only applies to motorcycles. Exercises the
+    reordered pipeline end-to-end on real images: track vehicle boxes, then
+    classify wheels, then gate the helmet check by that result.
+    """
+    import cv2
+    from main import SurveillancePipeline
+
+    p = SurveillancePipeline()
+    wheel_seen = set()
+    for path in sorted(glob.glob(os.path.join(HELMET_TEST_IMAGES, "*")))[:15]:
+        frame = cv2.imread(path)
+        if frame is None:
+            continue
+        dets = p.helmet.detect(frame)
+        vehicle_dets = [d for d in dets if d.is_vehicle]
+        track_inputs = []
+        for d in vehicle_dets:
+            crop = p._crop(frame, d.bbox)
+            wp = p.wheels.classify_one(crop)
+            track_inputs.append((d.bbox, d.conf, wp.cls_id))
+        for tr in p.tracker.update(frame, track_inputs):
+            wc = tr.majority_wheel_class()
+            if wc is not None:
+                wheel_seen.add(wc)
+
+    assert 0 in wheel_seen, (
+        "no track was ever classified 2-wheeler on real motorcycle images - "
+        "the helmet-check gate would never fire")
+
+
 def test_configured_weight_paths_exist():
     """Config must not point at weights that were never produced."""
     from utils.config import load_config, resolve_path
