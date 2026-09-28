@@ -109,10 +109,12 @@ const divider = new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, s
 // ============================================================ I. RESULTS AND DISCUSSION
 const resultsSection = [
   sectionHeading("I. Results and Discussion"),
+  bodyPara("This paper reports the outcome of applying the methodology proposed in Part I: a sequential per-frame pipeline in which each frame is first classified into one of four scene conditions and enhanced accordingly, vehicles are detected and tracked with temporal majority voting on wheel count, helmet compliance is checked within tracks classified as two-wheelers, cross-camera identity is matched with an off-the-shelf re-identification backbone, and every deployable classifier is subsequently pruned, fine-tuned, and quantized for CPU deployment. Each subsection below follows the same structure -- what was measured, how, and what the result was -- ending in the numeric comparison against the literature surveyed in Part I (Section II) and the conclusion (Section III)."),
   subHeading("A. Adaptive Preprocessing"),
-  bodyPara(`The learned classifier reaches ${P1.accuracy.toFixed(2)} four-class accuracy versus a 0.49 rule-based baseline. To rule out a dataset-provenance confound, the fog and rain pair was isolated from a single source dataset, holding provenance constant, and the model still achieved 0.68 accuracy against a 0.49 same-source baseline, evidence the model learns genuine weather signal rather than dataset fingerprints.`),
+  bodyPara(`The learned scene classifier described in Part I (Section III-B) was evaluated on held-out real DAWN/ExDark/COCO imagery to test whether it separates the four scene conditions better than the rule-based baseline it replaces. The learned classifier reaches ${P1.accuracy.toFixed(2)} four-class accuracy versus a 0.49 rule-based baseline. To rule out a dataset-provenance confound, the fog and rain pair was isolated from a single source dataset, holding provenance constant, and the model still achieved 0.68 accuracy against a 0.49 same-source baseline, evidence the model learns genuine weather signal rather than dataset fingerprints.`),
   ...figure("outputs/report/confusion_matrix.png", 280, 210, "Figure 1: Four-class scene confusion matrix. Error concentrates on the fog-rain boundary, a physically overlapping condition pair."),
   subHeading("B. Wheel-Count and Helmet Detection"),
+  bodyPara("Following Part I's methodology (Section III-C), the three wheel-count architectures were trained and evaluated under an identical, leakage-free split, and the seven-class helmet detector was evaluated on a held-out test split never used for epoch selection. Table 1 reports the wheel-count comparison first."),
   ...simpleTable(["Model", "Accuracy", "Pretrained"], [
     [P2W.cnn.model, P2W.cnn.accuracy.toFixed(3), "No"],
     [P2W.cspnext.model, P2W.cspnext.accuracy.toFixed(3), "No"],
@@ -123,11 +125,13 @@ const resultsSection = [
   ...figure("outputs/report_p2/wheel_compare.png", 280, 200, "Figure 2: Wheel-count accuracy and macro-F1, leakage-free split."),
   ...figure("outputs/report_p2/helmet_ap.png", 280, 200, "Figure 3: Per-class helmet average precision, held-out test split."),
   subHeading("C. Tracking, Voting, and Re-Identification"),
+  bodyPara("The temporal majority-vote buffer described in Part I (Section III-D) was evaluated on UA-DETRAC by grouping per-frame wheel-count predictions under ground-truth track identifiers, isolating the voting effect from tracker error; the off-the-shelf re-identification backbone was separately evaluated on VeRi-776 under the standard single-camera-exclusion protocol."),
   bodyPara(`Flip-rate, defined as how often the emitted label changes between consecutive frames of one tracked vehicle, fell ${flipDrop.toFixed(1)}% from a single-frame window to a thirty-frame window. Balanced accuracy improved more modestly (best at a fifteen-frame window: ${P3O.overall["15"].toFixed(3)} versus ${P3O.overall["1"].toFixed(3)} for a single frame), since part of the flip-rate reduction is mechanical smoothing rather than a pure accuracy gain.`),
   bodyPara(`On VeRi-776, off-the-shelf OSNet with no vehicle-identity metric learning applied reaches Rank-1 ${P3REID.rank1.toFixed(3)} and mean average precision ${P3REID.mAP.toFixed(3)}, well below fine-tuned state-of-the-art results but far above the 776-way chance level of 0.1%, confirming genuine appearance signal even without fine-tuning.`),
   ...figure("outputs/report_p3/flip_rate.png", 280, 200, "Figure 4: Prediction flip-rate versus vote window N."),
   ...figure("outputs/report_p3/reid.png", 270, 200, "Figure 5: VeRi-776 cross-camera re-identification scores, off-the-shelf OSNet."),
   subHeading("D. Optimization"),
+  bodyPara("Each classifier was pruned, optionally fine-tuned, and quantized as described in Part I (Section III-E); Table 2 walks through SmallCNN's accuracy at each stage of that process rather than only the final configuration."),
   ...simpleTable(["Configuration", "Accuracy", "Retention", "Size (MB)"], [
     ["FP32", sc_fp32.accuracy.toFixed(3), "1.00", sc_fp32.size_mb.toFixed(2)],
     ["Pruned (naive)", sc_naive.accuracy.toFixed(3), sc_naive.accuracy_retention.toFixed(2), sc_naive.size_mb.toFixed(2)],
